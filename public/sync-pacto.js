@@ -1,8 +1,8 @@
 /**
  * 24H NORTE — Sync Script para PACTO
  *
- * Cole este código no console do browser enquanto estiver logado no PACTO ZW
- * (https://zw815.pactosolucoes.com.br) para enviar dados ao dashboard local.
+ * Cole este código no console do browser enquanto estiver logado no PACTO
+ * para enviar dados ao dashboard.
  *
  * Uso:
  *   1. Abra o console do browser no PACTO (F12 → Console)
@@ -11,8 +11,9 @@
  */
 
 (async function SYNC_24H_NORTE() {
-  const ZW = 'https://zw815.pactosolucoes.com.br';
-  const SERVER = 'http://localhost:3000';
+  const ZW     = 'https://zw815.pactosolucoes.com.br';
+  const SERVER = 'https://24h-nine.vercel.app';
+  const SYNC_KEY = '24hNorte_sync';
   const EMPRESA = 4;
   const UNIDADE = 4; // 24H NORTE
 
@@ -39,36 +40,36 @@
   const get = (r) => r.status === 'fulfilled' ? r.value : null;
   const total = (r) => get(r)?.totalElements ?? get(r)?.total ?? 0;
 
-  const ativosTotal = total(contratos);
+  const ativosTotal    = total(contratos);
   const canceladosTotal = total(cancelados);
-  const leadsTotal = total(leads);
-  const checkinData = get(checkins);
-  const finData = get(financeiro);
+  const leadsTotal     = total(leads);
+  const checkinData    = get(checkins);
+  const finData        = get(financeiro);
 
   const stats = {
-    ativos: ativosTotal,
+    ativos:        ativosTotal,
     cancelamentos: canceladosTotal,
-    leadsAtivos: leadsTotal,
-    checkinsHoje: Array.isArray(checkinData?.content) ? checkinData.content.length : (checkinData?.totalElements || 0),
-    receita: finData?.totalReceita || finData?.receitaMes || 0,
-    novasVendas: total(cancelados), // reuse slot
+    leadsAtivos:   leadsTotal,
+    checkinsHoje:  Array.isArray(checkinData?.content) ? checkinData.content.length : (checkinData?.totalElements || 0),
+    receita:       finData?.totalReceita || finData?.receitaMes || 0,
+    novasVendas:   total(cancelados),
     inadimplentes: 0,
     renovacoes30d: 0,
     funil: {
-      lead: Math.floor(leadsTotal * 0.4),
-      contato: Math.floor(leadsTotal * 0.3),
-      visita: Math.floor(leadsTotal * 0.2),
+      lead:     Math.floor(leadsTotal * 0.4),
+      contato:  Math.floor(leadsTotal * 0.3),
+      visita:   Math.floor(leadsTotal * 0.2),
       proposta: Math.floor(leadsTotal * 0.1),
-      fechado: 0,
+      fechado:  0,
     },
     leadsSemContato: Math.floor(leadsTotal * 0.15),
   };
 
   const checkinItems = Array.isArray(checkinData?.content)
     ? checkinData.content.slice(0, 50).map(c => ({
-        nome: c.nomeCliente || c.nome || 'Aluno',
-        hora: c.dataAcesso ? new Date(c.dataAcesso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
-        plano: c.plano || c.nomePlano || '-',
+        nome:   c.nomeCliente || c.nome || 'Aluno',
+        hora:   c.dataAcesso ? new Date(c.dataAcesso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
+        plano:  c.plano || c.nomePlano || '-',
         status: c.situacao || 'OK',
       }))
     : [];
@@ -78,19 +79,22 @@
   try {
     const resp = await fetch(`${SERVER}/api/dashboard/sync`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Sync-Key': SYNC_KEY,
+      },
       body: JSON.stringify(payload),
     });
     const result = await resp.json();
     console.log('✅ Sync completo:', result);
     console.table({
-      'Alunos ativos': stats.ativos,
+      'Alunos ativos':      stats.ativos,
       'Cancelamentos (mês)': stats.cancelamentos,
-      'Leads ativos': stats.leadsAtivos,
-      'Check-ins hoje': stats.checkinsHoje,
+      'Leads ativos':       stats.leadsAtivos,
+      'Check-ins hoje':     stats.checkinsHoje,
+      'Receita do mês':     stats.receita,
     });
   } catch (e) {
     console.error('❌ Erro ao enviar dados:', e.message);
-    console.log('💡 Verifique se o servidor está rodando em localhost:3000');
   }
 })();
