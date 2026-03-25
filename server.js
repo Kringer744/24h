@@ -121,28 +121,42 @@ app.get('/diag', async (req, res) => {
     [directFin, directFinErr] = await pactoSession.getFinanceiro().then(d => [d, null]).catch(e => [null, e.message]);
   }
 
-  // Tenta obter JWT via PACTO_AUTH_URL
   const axios = require('axios');
-  const authUrl = process.env.PACTO_AUTH_URL;
+  const apiKey      = process.env.PACTO_API_KEY;
+  const authUrl     = process.env.PACTO_AUTH_URL;
+  const sinteticoBase = 'https://app.pactosolucoes.com.br/sintetico/prest';
+  const hoje = new Date().toISOString().split('T')[0];
+  const mesInicio = hoje.slice(0, 8) + '01';
+  const emp = process.env.PACTO_EMPRESA_ID || '1';
+  const uni = process.env.PACTO_UNIDADE_ID || '1';
+
+  // Tenta sintetico com API key como Bearer
+  let apiKeyMovResult = null, apiKeyMovErr = null;
+  if (apiKey) {
+    try {
+      const r = await axios.get(`${sinteticoBase}/movimentacao-contratos`, {
+        params: { empresa: emp, unidade: uni, dtIni: mesInicio, dtFim: hoje },
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'empresaId': emp, 'unidadeId': uni },
+        timeout: 10000, validateStatus: s => s < 600,
+      });
+      apiKeyMovResult = { status: r.status, keys: r.data ? Object.keys(r.data) : null, sample: JSON.stringify(r.data).slice(0, 300) };
+    } catch (e) { apiKeyMovErr = e.message; }
+  }
+
+  // Tenta login JWT via auth URL com diferentes formatos
   let jwtResult = null, jwtErr = null;
   if (authUrl) {
-    try {
-      const r = await axios.post(`${authUrl}/api/authenticate`, {
-        login: process.env.PACTO_USER,
-        senha: process.env.PACTO_PASS,
-        empresaId: parseInt(process.env.PACTO_EMPRESA_ID || '4'),
-        unidadeId: parseInt(process.env.PACTO_UNIDADE_ID || '4'),
-      }, { timeout: 10000, validateStatus: s => s < 600 });
-      jwtResult = { status: r.status, keys: r.data ? Object.keys(r.data) : null, sample: JSON.stringify(r.data).slice(0, 200) };
-    } catch (e) { jwtErr = e.message; }
-    if (!jwtResult) {
+    const formats = [
+      { login: process.env.PACTO_USER, senha: process.env.PACTO_PASS, empresaId: parseInt(emp), unidadeId: parseInt(uni) },
+      { username: process.env.PACTO_USER, password: process.env.PACTO_PASS },
+      { email: process.env.PACTO_USER, password: process.env.PACTO_PASS, empresaId: parseInt(emp) },
+    ];
+    for (const body of formats) {
       try {
-        const r2 = await axios.post(`${authUrl}/authenticate`, {
-          username: process.env.PACTO_USER, password: process.env.PACTO_PASS,
-          empresaId: parseInt(process.env.PACTO_EMPRESA_ID || '4'),
-        }, { timeout: 10000, validateStatus: s => s < 600 });
-        jwtResult = { status: r2.status, keys: r2.data ? Object.keys(r2.data) : null, sample: JSON.stringify(r2.data).slice(0, 200) };
-      } catch (e2) { jwtErr += ' | ' + e2.message; }
+        const r = await axios.post(`${authUrl}/api/authenticate`, body, { timeout: 8000, validateStatus: s => s < 600 });
+        jwtResult = { status: r.status, keys: r.data ? Object.keys(r.data) : null, sample: JSON.stringify(r.data).slice(0, 300) };
+        if (r.status < 400) break;
+      } catch (e) { jwtErr = e.message; }
     }
   }
 
@@ -157,6 +171,7 @@ app.get('/diag', async (req, res) => {
     } : null,
     directMovErr,
     directFinErr,
+    apiKeyMov: { result: apiKeyMovResult, err: apiKeyMovErr },
     jwtAttempt: { authUrl: authUrl ? '✓ ' + authUrl : '✗ ausente', jwtResult, jwtErr },
     pactoSession: pactoSession.getSessionStatus(),
     envVars: {
