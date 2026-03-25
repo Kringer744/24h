@@ -34,9 +34,16 @@ router.post('/sync/force', async (req, res) => {
 });
 
 // GET /api/dashboard/stats — lê cache populado pelo auto-sync
-router.get('/stats', (req, res) => {
-  const stats   = cache.get('stats') || {};
-  const rawData = cache.get('_raw');
+router.get('/stats', async (req, res) => {
+  let stats   = cache.get('stats') || {};
+  let rawData = cache.get('_raw');
+
+  // Cache vazio — roda o sync agora e espera (cold start no Vercel)
+  if (!stats._syncedAt && !stats.ativos) {
+    try { await autoSync.runSync(); } catch (_) {}
+    stats   = cache.get('stats') || {};
+    rawData = cache.get('_raw');
+  }
 
   if (!stats._syncedAt && !stats.ativos) {
     return res.json({ _source: 'sem-dados', _autoSync: true });

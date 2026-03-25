@@ -1,6 +1,11 @@
 {
   "version": 2,
   "installCommand": "npm install --omit=optional",
+  "functions": {
+    "server.js": {
+      "maxDuration": 60
+    }
+  },
   "builds": [
     {
       "src": "server.js",
