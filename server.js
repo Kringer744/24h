@@ -121,6 +121,31 @@ app.get('/diag', async (req, res) => {
     [directFin, directFinErr] = await pactoSession.getFinanceiro().then(d => [d, null]).catch(e => [null, e.message]);
   }
 
+  // Tenta obter JWT via PACTO_AUTH_URL
+  const axios = require('axios');
+  const authUrl = process.env.PACTO_AUTH_URL;
+  let jwtResult = null, jwtErr = null;
+  if (authUrl) {
+    try {
+      const r = await axios.post(`${authUrl}/api/authenticate`, {
+        login: process.env.PACTO_USER,
+        senha: process.env.PACTO_PASS,
+        empresaId: parseInt(process.env.PACTO_EMPRESA_ID || '4'),
+        unidadeId: parseInt(process.env.PACTO_UNIDADE_ID || '4'),
+      }, { timeout: 10000, validateStatus: s => s < 600 });
+      jwtResult = { status: r.status, keys: r.data ? Object.keys(r.data) : null, sample: JSON.stringify(r.data).slice(0, 200) };
+    } catch (e) { jwtErr = e.message; }
+    if (!jwtResult) {
+      try {
+        const r2 = await axios.post(`${authUrl}/authenticate`, {
+          username: process.env.PACTO_USER, password: process.env.PACTO_PASS,
+          empresaId: parseInt(process.env.PACTO_EMPRESA_ID || '4'),
+        }, { timeout: 10000, validateStatus: s => s < 600 });
+        jwtResult = { status: r2.status, keys: r2.data ? Object.keys(r2.data) : null, sample: JSON.stringify(r2.data).slice(0, 200) };
+      } catch (e2) { jwtErr += ' | ' + e2.message; }
+    }
+  }
+
   res.json({
     ts: new Date().toISOString(),
     syncError,
@@ -130,15 +155,21 @@ app.get('/diag', async (req, res) => {
       agregadores: stats.agregadores, inadimplentes: stats.inadimplentes,
       receita: stats.receita,
     } : null,
-    rawMovKeys: raw?.movimentacao ? Object.keys(raw.movimentacao) : null,
-    rawMovFull: raw?.movimentacao || null,
-    directMov,
     directMovErr,
-    directFin,
     directFinErr,
+    jwtAttempt: { authUrl: authUrl ? '✓ ' + authUrl : '✗ ausente', jwtResult, jwtErr },
     pactoSession: pactoSession.getSessionStatus(),
-    pactoUser: process.env.PACTO_USER ? '✓ configurado' : '✗ ausente',
-    pactoPass: process.env.PACTO_PASS ? '✓ configurado' : '✗ ausente',
+    envVars: {
+      PACTO_USER:        process.env.PACTO_USER        ? '✓' : '✗',
+      PACTO_PASS:        process.env.PACTO_PASS        ? '✓' : '✗',
+      PACTO_API_KEY:     process.env.PACTO_API_KEY     ? '✓' : '✗',
+      PACTO_AUTH_URL:    process.env.PACTO_AUTH_URL    ? '✓ ' + process.env.PACTO_AUTH_URL : '✗',
+      PACTO_SINTETICO_URL: process.env.PACTO_SINTETICO_URL ? '✓ ' + process.env.PACTO_SINTETICO_URL : '✗',
+      PACTO_PERSONAGEM_URL: process.env.PACTO_PERSONAGEM_URL ? '✓ ' + process.env.PACTO_PERSONAGEM_URL : '✗',
+      PACTO_EMPRESA_ID:  process.env.PACTO_EMPRESA_ID  || '(default 4)',
+      PACTO_UNIDADE_ID:  process.env.PACTO_UNIDADE_ID  || '(default 4)',
+      PACTO_UNIDADE_CHAVE: process.env.PACTO_UNIDADE_CHAVE || '(default 24H_NORTE)',
+    },
   });
 });
 
