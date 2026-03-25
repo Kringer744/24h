@@ -320,4 +320,6 @@ function getSessionStatus() {
   };
 }
 
-module.exports = { login, ensureSession, getMovimentacao, getFinanceiro, getInadimplentesLista, getLeadsCrm, getSessionStatus };
+function getJsessionid() { return _session.jsessionid; }
+
+module.exports = { login, ensureSession, getMovimentacao, getFinanceiro, getInadimplentesLista, getLeadsCrm, getSessionStatus, getJsessionid };
