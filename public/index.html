@@ -1950,13 +1950,17 @@ async function refreshDashboard() {
       } else if (src === 'auto' && temSintetico) {
         hideSyncBanner(); // Tudo OK — dados completos via auto-sync
       } else if (src === 'auto' && !temSintetico) {
-        const when = d._syncedAt ? new Date(d._syncedAt).toLocaleTimeString('pt-BR') : '?';
-        showSyncBanner(`Dados parciais (${when}) — Movimentações requerem PACTO_USER/PACTO_PASS no .env ou Bookmarklet`, 'yellow');
-        // Mostrar aviso inline na tabela de movimentações
-        const notice = document.getElementById('movSinteticoNotice');
-        const btnBk = document.getElementById('btnBookmarklet');
-        if (notice) { notice.style.display = 'block'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
-        if (btnBk) btnBk.style.display = 'inline-flex';
+        // Se credenciais estão configuradas, sessão está tentando — não mostra aviso
+        if (d._hasCredentials) {
+          hideSyncBanner();
+        } else {
+          const when = d._syncedAt ? new Date(d._syncedAt).toLocaleTimeString('pt-BR') : '?';
+          showSyncBanner(`Dados parciais (${when}) — Configure PACTO_USER/PACTO_PASS ou use o Bookmarklet`, 'yellow');
+          const notice = document.getElementById('movSinteticoNotice');
+          const btnBk = document.getElementById('btnBookmarklet');
+          if (notice) { notice.style.display = 'block'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
+          if (btnBk) btnBk.style.display = 'inline-flex';
+        }
       } else if (src === 'cache') {
         const when = d._syncedAt ? new Date(d._syncedAt).toLocaleString('pt-BR') : '?';
         showSyncBanner(`Cache de ${when}`, 'yellow');

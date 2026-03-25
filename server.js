@@ -16,17 +16,6 @@ app.use(cookieParser());
 // Rotas públicas (sem autenticação)
 app.use('/api/auth', require('./src/routes/auth'));
 
-// Debug — testa login PACTO (público, temporário)
-app.get('/api/debug/session', async (req, res) => {
-  try {
-    const pactoSession = require('./src/integrations/pactoSession');
-    const result = await pactoSession.login();
-    res.json({ loginOk: result, status: pactoSession.getSessionStatus() });
-  } catch (e) {
-    res.json({ loginOk: false, error: e.message });
-  }
-});
-
 // Arquivos estáticos públicos (login.html, assets)
 app.use(express.static(path.join(__dirname, 'public')));
 

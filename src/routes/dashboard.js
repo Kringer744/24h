@@ -86,6 +86,7 @@ router.get('/stats', async (req, res) => {
     ...(funilReal && { leadsSemContato: funilReal.semContato }),
     ...(cadenciasStats && { cadencias: cadenciasStats }),
     _source: stats._autoSync ? 'auto' : (stats._syncedAt ? 'cache' : 'sem-dados'),
+    _hasCredentials: !!(process.env.PACTO_USER && process.env.PACTO_PASS),
   };
 
   if (rawData) result._raw = rawData;
