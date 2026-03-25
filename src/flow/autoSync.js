@@ -17,15 +17,23 @@ if (!process.env.VERCEL) {
   try { pactoHeadless = require('../integrations/pactoHeadless'); } catch (_) {}
 }
 
-let _lastSyncAt = null;
-let _syncRunning = false;
+let _lastSyncAt   = null;
+let _syncRunning  = false;
+let _syncPromise  = null;  // Promise da sync em andamento
 
 /**
- * Executa a sincronização completa
+ * Executa a sincronização completa.
+ * Se já houver uma sync em andamento, aguarda ela terminar (não duplica).
  */
 async function runSync() {
+  if (_syncRunning && _syncPromise) return _syncPromise;
   if (_syncRunning) return;
   _syncRunning = true;
+  _syncPromise = _doSync().finally(() => { _syncRunning = false; _syncPromise = null; });
+  return _syncPromise;
+}
+
+async function _doSync() {
 
   console.log('[AUTO-SYNC] Iniciando sincronização automática...');
 
@@ -258,13 +266,11 @@ async function runSync() {
     }
 
     _lastSyncAt = new Date();
-    const temSintetico = sessionOk && (movData || finData);
+    const temSintetico = !!(movData || finData);
     console.log(`[AUTO-SYNC] Concluído em ${new Date().toLocaleTimeString('pt-BR')}. Ativos=${ativos} | Checkins=${checkinsHoje} | Sintetico=${temSintetico ? 'OK' : 'SEM SESSÃO'}`);
 
   } catch (err) {
     console.error('[AUTO-SYNC] Erro geral:', err.message);
-  } finally {
-    _syncRunning = false;
   }
 }
 
@@ -274,8 +280,8 @@ async function runSync() {
  * - Sync a cada 30 minutos
  */
 function start() {
-  // Sync inicial com delay de 3s (dar tempo ao servidor de iniciar)
-  setTimeout(runSync, 3000);
+  // Sync inicial imediato (sem delay — o servidor já está up quando start() é chamado)
+  runSync();
 
   // Sync periódico a cada 30 minutos
   const INTERVAL = 30 * 60 * 1000;

@@ -26,7 +26,7 @@ let _session = {
 
 // Axios sem redirect automático para capturar cookies
 const http = axios.create({
-  timeout: 25000,
+  timeout: 15000,
   maxRedirects: 0,
   validateStatus: s => s < 500,
   headers: {
