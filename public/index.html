@@ -1,0 +1,4171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>24H NORTE — Dashboard Comercial</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+    :root {
+      /* Backgrounds - deep cosmic dark (blue tint) */
+      --color-bg:        #060C18;
+      --color-surface:   #080F1E;
+      --color-card:      #0A1226;
+      --color-elevated:  #0D1730;
+      --color-hover:     rgba(37, 99, 235, 0.08);
+
+      /* Borders - subtle blue tint */
+      --color-border:         rgba(147, 197, 253, 0.07);
+      --color-border-strong:  rgba(147, 197, 253, 0.15);
+
+      /* Text */
+      --color-text-primary:   #EEF2FF;
+      --color-text-secondary: rgba(196, 213, 255, 0.55);
+      --color-text-muted:     rgba(148, 180, 255, 0.38);
+
+      /* Primary accent = blue (interactive elements) */
+      --color-accent:      #2563EB;
+      --color-accent-dark: #1D4ED8;
+      --color-accent-tint: rgba(37, 99, 235, 0.14);
+      --color-accent-light: #60A5FA;
+
+      /* Semantic - positive/negative metrics */
+      --color-green:       #10B981;
+      --color-green-dark:  #059669;
+      --color-green-tint:  rgba(16, 185, 129, 0.12);
+      --color-orange:      #F97316;
+      --color-orange-tint: rgba(249, 115, 22, 0.12);
+      --color-purple:      #A78BFA;
+      --color-purple-tint: rgba(167, 139, 250, 0.12);
+
+      /* Radius - slightly larger = more premium */
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+      --radius-full: 9999px;
+
+      /* Spacing */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* Nebula background glow (Apex aesthetic) */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -200px;
+      right: -100px;
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle at center,
+        rgba(37, 99, 235, 0.22) 0%,
+        rgba(29, 78, 216, 0.10) 35%,
+        transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(60px);
+      border-radius: 50%;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: 30%;
+      left: 100px;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle at center,
+        rgba(59, 130, 246, 0.08) 0%,
+        transparent 65%);
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(50px);
+      border-radius: 50%;
+    }
+
+    body {
+      background: var(--color-bg);
+      color: var(--color-text-primary);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      display: flex; /* Sidebar layout */
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar {
+      width: 250px;
+      background: var(--color-surface);
+      border-right: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      padding: 32px 14px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .sidebar-brand {
+      padding: 0 16px 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--color-accent-light, #60A5FA);
+      font-weight: 800;
+      font-size: 19px;
+      letter-spacing: -0.025em;
+    }
+
+    .link-group { margin-bottom: 32px; }
+    .link-label { padding: 0 16px 14px; font-size: 11px; text-transform: uppercase; color: var(--color-text-muted); font-weight: 700; letter-spacing: 0.12em; opacity: 0.6; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-bottom: 6px;
+    }
+
+    .nav-item:hover { background: rgba(255, 255, 255, 0.04); color: white; transform: translateX(4px); }
+    .nav-item.active { background: var(--color-accent-tint); color: var(--color-accent-light, #60A5FA); box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.35), 0 0 20px rgba(37, 99, 235, 0.15); }
+
+    .main-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--color-bg);
+      position: relative;
+    }
+
+    header {
+      padding: 32px 60px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      z-index: 10;
+      border-bottom: 1px solid var(--color-border);
+      background: linear-gradient(180deg, rgba(11, 11, 34, 0.95) 0%, transparent 100%);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+    }
+
+    main {
+       flex: 1;
+       overflow-y: auto;
+       padding: 16px 60px 60px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    @media (max-width: 1400px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* ── Glassmorphism card ── */
+    .kpi-card {
+      background: rgba(10, 18, 38, 0.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(147, 197, 253, 0.10);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      min-height: 110px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    /* Subtle top-left shine for glass effect */
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(147, 197, 253, 0.25), transparent);
+    }
+
+    .kpi-card:hover {
+      border-color: rgba(37, 99, 235, 0.35);
+      background: rgba(13, 23, 48, 0.70);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(37, 99, 235, 0.18), 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.07);
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .kpi-value {
+      font-size: 34px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .kpi-sub {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-muted);
+    }
+
+    /* Mapping old semantic classes to new tokens */
+    .kpi-card.green .kpi-value { color: var(--color-green); }
+    .kpi-card.red .kpi-value   { color: var(--color-orange); }
+    .kpi-card.yellow .kpi-value { color: var(--color-purple); }
+    .kpi-card.blue .kpi-value  { color: var(--color-accent-light); }
+    .kpi-card.purple .kpi-value { color: var(--color-purple); }
+    .kpi-card.orange .kpi-value { color: var(--color-orange); }
+    .kpi-card.cyan .kpi-value  { color: var(--color-accent-light); }
+
+    /* Colored left accent bar per card type */
+    .kpi-card.green::after  { content:''; position:absolute; left:0; top:20%; bottom:20%; width:3px; background:var(--color-green); border-radius:0 2px 2px 0; box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+    .kpi-card.red::after    { content:''; position:absolute; left:0; top:20%; bottom:20%; width:3px; background:var(--color-orange); border-radius:0 2px 2px 0; box-shadow: 0 0 8px rgba(249,115,22,0.5); }
+    .kpi-card.yellow::after { content:''; position:absolute; left:0; top:20%; bottom:20%; width:3px; background:var(--color-purple); border-radius:0 2px 2px 0; box-shadow: 0 0 8px rgba(167,139,250,0.5); }
+    .kpi-card.blue::after   { content:''; position:absolute; left:0; top:20%; bottom:20%; width:3px; background:var(--color-accent); border-radius:0 2px 2px 0; box-shadow: 0 0 8px rgba(37,99,235,0.5); }
+    .kpi-card.purple::after { content:''; position:absolute; left:0; top:20%; bottom:20%; width:3px; background:var(--color-purple); border-radius:0 2px 2px 0; box-shadow: 0 0 8px rgba(167,139,250,0.5); }
+    .kpi-card.orange::after { content:''; position:absolute; left:0; top:20%; bottom:20%; width:3px; background:var(--color-orange); border-radius:0 2px 2px 0; box-shadow: 0 0 8px rgba(249,115,22,0.5); }
+    .kpi-card.cyan::after   { content:''; position:absolute; left:0; top:20%; bottom:20%; width:3px; background:var(--color-accent-light); border-radius:0 2px 2px 0; box-shadow: 0 0 8px rgba(96,165,250,0.5); }
+
+    /* Deltas */
+    .kpi-delta {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      margin-left: 6px;
+    }
+    .kpi-delta.up { background: var(--color-green-tint); color: var(--color-green); }
+    .kpi-delta.down { background: var(--color-orange-tint); color: var(--color-orange); }
+
+    /* ─── SECTION / CARDS ─── */
+    .section {
+      background: rgba(10, 18, 38, 0.50);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(147, 197, 253, 0.09);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .section-header {
+      padding: 16px 20px;
+      border-bottom: 0.5px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+    }
+
+    .section-body { padding: 20px; }
+
+    /* ─── FUNIL ─── */
+    /* ─── KANBAN ─── */
+    .kanban {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      align-items: flex-start;
+    }
+
+    .kanban-col {
+      flex: 0 0 220px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 200px);
+      min-height: 120px;
+    }
+
+    .kanban-col-header {
+      padding: 12px 14px 10px;
+      border-bottom: 0.5px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .kanban-col-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .kanban-col-count {
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--color-elevated);
+      padding: 2px 7px;
+      border-radius: 10px;
+      color: var(--color-text-secondary);
+    }
+
+    .kanban-cards {
+      padding: 8px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .op-card {
+      background: var(--color-card);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .op-card:hover {
+      border-color: var(--color-border-strong);
+      background: var(--color-elevated);
+    }
+
+    .op-card-nome {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+
+    .op-card-info {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .op-card-actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .op-card-btn {
+      flex: 1;
+      background: var(--color-elevated);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      color: var(--color-text-secondary);
+      font-size: 11px;
+      padding: 3px 0;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.1s;
+    }
+
+    .op-card-btn:hover { background: var(--color-border); color: var(--color-text-primary); }
+    .op-card-btn.green { background: var(--color-green-tint); color: var(--color-green); border-color: var(--color-green); }
+    .op-card-btn.purple { background: rgba(168,85,247,0.1); color: #a855f7; border-color: #a855f7; }
+
+    .kanban-drop-zone.drag-over { background: rgba(37,99,235,0.08); border: 1.5px dashed var(--color-accent); border-radius: var(--radius-md); }
+
+    .op-dias {
+      font-size: 10px;
+      color: var(--color-text-muted);
+      float: right;
+    }
+
+    .op-dias.urgente { color: var(--color-orange); font-weight: 600; }
+
+    /* Modal oportunidade */
+    .modal-hist { max-height: 200px; overflow-y: auto; margin-top: 12px; }
+    .hist-item { padding: 6px 0; border-bottom: 0.5px solid var(--color-border); font-size: 12px; }
+    .hist-item:last-child { border-bottom: none; }
+    .hist-data { color: var(--color-text-muted); font-size: 11px; }
+
+    /* Legacy funil mini (no dashboard) */
+    .funil { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+    .funil-etapa { flex: 1; min-width: 120px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: var(--radius-md); padding: 12px; }
+    .funil-etapa-nome { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); margin-bottom: 6px; }
+    .funil-etapa-count { font-size: 22px; font-weight: 400; margin-bottom: 2px; }
+    .funil-etapa-sub { font-size: 11px; color: var(--color-text-muted); }
+    .funil-arrow { display: flex; align-items: center; color: var(--color-text-muted); opacity: 0.4; font-size: 14px; }
+
+    /* ─── DATA TABLE ─── */
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+
+    td {
+      font-size: 13px;
+      color: var(--color-text-secondary);
+      padding: 12px 14px;
+      border-bottom: 0.5px solid var(--color-border);
+      transition: background 0.1s;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td {
+      background: var(--color-hover);
+      color: var(--color-text-primary);
+    }
+
+    /* ─── BADGES / STATUS PILLS ─── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    
+    .badge::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* ─── HERO METRICS ─── */
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .hero-card {
+      background: rgba(10, 18, 38, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(147, 197, 253, 0.10);
+      border-radius: 16px;
+      padding: 22px 20px 18px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 28px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .hero-card::after {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      border-radius: 3px 0 0 3px;
+    }
+    .hero-card.green::after  { background: var(--color-green); }
+    .hero-card.yellow::after { background: #F59E0B; }
+    .hero-card.blue::after   { background: var(--color-accent); }
+    .hero-card.red::after    { background: var(--color-red); }
+    .hero-card.cyan::after   { background: #06B6D4; }
+    .hero-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hero-value {
+      font-size: 40px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 6px;
+      letter-spacing: -1px;
+    }
+    .hero-card.green  .hero-value { color: var(--color-green); }
+    .hero-card.yellow .hero-value { color: #F59E0B; }
+    .hero-card.blue   .hero-value { color: var(--color-accent-light); }
+    .hero-card.red    .hero-value { color: var(--color-red); }
+    .hero-card.cyan   .hero-value { color: #67E8F9; }
+    .hero-sub { font-size: 11px; color: var(--color-muted); }
+    .hero-icon {
+      position: absolute;
+      right: 16px; top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.07;
+      width: 56px; height: 56px;
+    }
+    @media (max-width: 900px) {
+      .hero-metrics { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ─── DASHBOARD 2-COL SECTIONS ─── */
+    .dash-sections-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) { .dash-sections-row { grid-template-columns: 1fr; } }
+
+    /* ─── MASSA CADENCIA CARDS ─── */
+    .base-card {
+      padding: 16px;
+      background: var(--color-elevated);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .base-card:hover { border-color: rgba(255,255,255,0.15); background: rgba(255,255,255,0.04); }
+    .base-card.selected { border-color: var(--color-accent); background: var(--color-accent-tint); }
+
+    .cadencia-tipo-card {
+      padding: 12px 14px;
+      background: var(--color-elevated);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      font-size: 13px;
+    }
+    .cadencia-tipo-card:hover { border-color: rgba(255,255,255,0.15); }
+    .cadencia-tipo-card.selected { border-color: var(--color-accent); background: var(--color-accent-tint); }
+
+    .badge.ativo, .badge.enviado { background: var(--color-green-tint); color: var(--color-green); }
+    .badge.cancelado, .badge.erro, .badge.inadimplente, .badge.vencida,
+    .badge.inativo, .badge.desistente { background: var(--color-orange-tint); color: var(--color-orange); }
+    .badge.trancado, .badge.visita, .badge.proposta { background: var(--color-purple-tint); color: var(--color-purple); }
+    .badge.lead, .badge.pendente, .badge.visitante { background: rgba(255, 255, 255, 0.06); color: var(--color-text-secondary); }
+
+    /* ─── FORMS & INPUTS ─── */
+    .form-group { margin-bottom: 20px; }
+
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-text-muted);
+      margin-bottom: 8px;
+    }
+
+    .form-control {
+      background: rgba(255, 255, 255, 0.06);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--color-text-primary);
+      outline: none;
+      width: 100%;
+      transition: all 0.15s;
+    }
+
+    .form-control::placeholder { color: var(--color-text-muted); }
+    .form-control:focus {
+      border-color: rgba(37, 99, 235, 0.5);
+      background: rgba(37, 99, 235, 0.05);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    select.form-control { cursor: pointer; }
+    select.form-control option { background: var(--color-elevated); color: var(--color-text-primary); }
+
+    /* ─── BUTTONS ─── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 0.5px solid var(--color-border-strong);
+      background: transparent;
+      color: var(--color-text-secondary);
+    }
+
+    .btn:hover {
+      background: var(--color-hover);
+      color: var(--color-text-primary);
+    }
+
+    .btn-primary {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 0 16px rgba(37, 99, 235, 0.35);
+    }
+    .btn-primary:hover {
+      background: var(--color-accent-dark);
+      border-color: var(--color-accent-dark);
+      color: #fff;
+      box-shadow: 0 0 24px rgba(37, 99, 235, 0.5);
+    }
+    
+    .btn-secondary {
+       background: rgba(255, 255, 255, 0.04);
+       border-color: var(--color-border);
+    }
+    
+    .btn-green {
+      background: var(--color-green-tint);
+      color: var(--color-green);
+      border-color: var(--color-green);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+    }
+
+    /* ─── WHATSAPP COMPOSER ─── */
+    .wpp-composer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .wpp-preview {
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .wpp-bubble {
+      background: var(--color-card);
+      color: var(--color-text-primary);
+      border: 0.5px solid var(--color-border-strong);
+      border-radius: 12px 12px 2px 12px;
+      padding: 16px;
+      max-width: 100%;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      position: relative;
+    }
+
+    /* ─── LOADING ─── */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      color: var(--color-text-muted);
+      font-size: 12px;
+      gap: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 1.5px solid var(--color-border);
+      border-top-color: var(--color-accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty {
+      text-align: center;
+      padding: 40px;
+      color: var(--color-text-muted);
+      font-size: 13px;
+    }
+
+    /* ─── TOAST ─── */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 9999;
+    }
+
+    .toast {
+      background: var(--color-elevated);
+      border: 0.5px solid var(--color-border-strong);
+      border-radius: var(--radius-md);
+      padding: 12px 18px;
+      font-size: 13px;
+      color: var(--color-text-primary);
+      min-width: 280px;
+      animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.success { border-left: 2px solid var(--color-green); }
+    .toast.error { border-left: 2px solid var(--color-orange); }
+
+    @keyframes slideIn {
+      from { transform: translateX(20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    /* ─── MISC ─── */
+    #syncBanner {
+        margin-bottom: 20px;
+        border-radius: var(--radius-md);
+    }
+
+    /* ─── TABS ─── */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ─── STATUS DOTS ─── */
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-green);
+      flex-shrink: 0;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+      transition: background 0.3s;
+    }
+
+    .dot.red    { background: var(--color-orange); box-shadow: 0 0 6px var(--color-orange); }
+    .dot.yellow { background: #F59E0B;             box-shadow: 0 0 6px #F59E0B; }
+    .dot.gray   { background: rgba(255,255,255,0.2); box-shadow: none; }
+
+    /* ─── MODAL ─── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+      background: var(--color-card);
+      border: 0.5px solid var(--color-border-strong);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      width: 480px;
+      max-width: 95vw;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: var(--color-text-primary);
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    @media (max-width: 768px) {
+      main { padding: 16px; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .wpp-composer { grid-template-columns: 1fr; }
+      .funil { flex-wrap: wrap; }
+    }
+
+    /* ─── BULK VARIACAO ─── */
+    .bulk-variacao {
+      background: rgba(255,255,255,.03);
+      border: 0.5px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+    }
+
+    /* ─── BROADCAST ─── */
+    .broadcast-card {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(29, 78, 216, 0.06));
+      border: 1px solid rgba(37, 99, 235, 0.25);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .broadcast-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .broadcast-count {
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--color-accent-light, #60A5FA);
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .broadcast-progress {
+      height: 6px;
+      background: var(--color-elevated);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .broadcast-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--color-accent), var(--color-accent-light, #60A5FA));
+      border-radius: var(--radius-full);
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+    /* ─── IMPORT INATIVOS ─── */
+    .import-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.03));
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+  </style>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="header-logo" style="background: linear-gradient(135deg, #2563EB, #60A5FA); color: white; padding: 6px 8px; border-radius: 8px; font-size: 16px; box-shadow: 0 0 16px rgba(37,99,235,0.5)">⚡</div>
+      <span>24H NORTE</span>
+    </div>
+
+    <div class="link-group">
+      <div class="link-label">Main Dashboard</div>
+      <div class="nav-item tab active" onclick="switchTab('dashboard')"><i data-lucide="layout-dashboard" style="width:16px;height:16px;flex-shrink:0"></i> Dashboard</div>
+      <div class="nav-item tab" onclick="switchTab('alunos')"><i data-lucide="users" style="width:16px;height:16px;flex-shrink:0"></i> Alunos</div>
+      <div class="nav-item tab" onclick="switchTab('funil')"><i data-lucide="git-merge" style="width:16px;height:16px;flex-shrink:0"></i> Funil CRM</div>
+    </div>
+
+    <div class="link-group">
+      <div class="link-label">Operacional</div>
+      <div class="nav-item tab" onclick="switchTab('financeiro')"><i data-lucide="bar-chart-2" style="width:16px;height:16px;flex-shrink:0"></i> Financeiro</div>
+      <div class="nav-item tab" onclick="switchTab('whatsapp')"><i data-lucide="message-circle" style="width:16px;height:16px;flex-shrink:0"></i> WhatsApp</div>
+    </div>
+
+    <div class="link-group">
+      <div class="link-label">Marketing</div>
+      <div class="nav-item tab" onclick="switchTab('meta')"><i data-lucide="trending-up" style="width:16px;height:16px;flex-shrink:0"></i> Meta Ads</div>
+    </div>
+
+    <div class="link-group" style="margin-top: auto; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px">
+      <div class="link-label">Plataforma</div>
+      <div class="status-dot">
+        <div class="dot gray" id="statusPacto"></div>
+        <span>PACTO 24h</span>
+      </div>
+      <div class="status-dot" style="margin-top: 8px">
+        <div class="dot gray" id="statusUazapi"></div>
+        <span>WhatsApp API</span>
+      </div>
+      <button onclick="mostrarConfiguracoes()" style="margin-top:12px;width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:7px 10px;color:#9CA3AF;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px;justify-content:center" id="btnConfig">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        Configurações
+      </button>
+      <div id="sidebarUser" style="margin-top:10px;padding:8px 10px;border-radius:8px;background:rgba(74,222,128,0.06);border:0.5px solid rgba(74,222,128,0.15);display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="font-size:11px;color:#4ade80;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="sidebarUserEmail">—</div>
+        <button onclick="fazerLogout()" title="Sair" style="background:none;border:none;cursor:pointer;color:#64748b;padding:0;flex-shrink:0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header>
+      <div class="header-title">
+        <h1 id="viewTitle" style="font-size: 24px; font-weight: 700">Dashboard Overview</h1>
+        <span style="font-size: 12px; color: var(--color-text-muted)">Sistema 24H Norte — Sincronizado</span>
+      </div>
+      <div class="header-right">
+        <div id="lastUpdate" style="font-size: 11px; color: var(--color-text-muted)"></div>
+        <button class="btn-refresh" id="btnForceSyncPacto" onclick="forceSyncPacto(this)" style="background: var(--color-accent, #2563EB); color: white; border: none; font-weight: 600; padding: 8px 20px; border-radius: 10px; cursor: pointer; font-size: 13px; box-shadow: 0 0 16px rgba(37,99,235,0.35); transition: all 0.2s">↻ Atualizar</button>
+      </div>
+    </header>
+
+    <div class="banner" id="syncBanner">
+      <span id="syncBannerMsg"></span>
+      <button class="btn-refresh" style="font-size: 10px; padding: 2px 8px" onclick="hideSyncBanner()">OK</button>
+    </div>
+
+    <main>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: DASHBOARD
+  ════════════════════════════════════════════════ -->
+  <div class="tab-content active" id="tab-dashboard">
+
+    <!-- ── Hero KPIs ──────────────────────────────────────────────────── -->
+    <div class="hero-metrics">
+      <div class="hero-card green">
+        <i data-lucide="users" class="hero-icon"></i>
+        <div class="hero-label"><i data-lucide="users" style="width:12px;height:12px"></i> Alunos Ativos</div>
+        <div class="hero-value" id="kpiAtivos">—</div>
+        <div class="hero-sub">contratos vigentes</div>
+      </div>
+      <div class="hero-card yellow">
+        <i data-lucide="alert-triangle" class="hero-icon"></i>
+        <div class="hero-label"><i data-lucide="alert-triangle" style="width:12px;height:12px"></i> Inadimplentes</div>
+        <div class="hero-value" id="kpiInadimplentes">—</div>
+        <div class="hero-sub">pagamentos em atraso</div>
+      </div>
+      <div class="hero-card blue">
+        <i data-lucide="dollar-sign" class="hero-icon"></i>
+        <div class="hero-label"><i data-lucide="dollar-sign" style="width:12px;height:12px"></i> Receita do Mês</div>
+        <div class="hero-value" id="kpiReceita">—</div>
+        <div class="hero-sub">faturamento total</div>
+      </div>
+      <div class="hero-card green" id="cardSaldo">
+        <i data-lucide="trending-up" class="hero-icon"></i>
+        <div class="hero-label"><i data-lucide="trending-up" style="width:12px;height:12px"></i> Saldo do Mês</div>
+        <div class="hero-value" id="kpiSaldo">—</div>
+        <div class="hero-sub">entradas vs saídas</div>
+      </div>
+    </div>
+
+    <!-- ── Secondary KPI Grid ────────────────────────────────────────── -->
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="kpi-card blue">
+        <div class="kpi-label">Novas Vendas</div>
+        <div class="kpi-value" id="kpiVendas">—</div>
+        <div class="kpi-sub">matrículas + rematric.</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Perda de Alunos</div>
+        <div class="kpi-value" id="kpiCancelados">—</div>
+        <div class="kpi-sub">cancelados + desis.</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">Renovações (30d)</div>
+        <div class="kpi-value" id="kpiRenovacoes">—</div>
+        <div class="kpi-sub">a vencer</div>
+      </div>
+      <div class="kpi-card cyan">
+        <div class="kpi-label">Check-ins Hoje</div>
+        <div class="kpi-value" id="kpiCheckins">—</div>
+        <div class="kpi-sub">acessos registrados</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-label">Leads no CRM</div>
+        <div class="kpi-value" id="kpiLeads">—</div>
+        <div class="kpi-sub">oportunidades ativas</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Total Geral</div>
+        <div class="kpi-value" id="kpiTotal">—</div>
+        <div class="kpi-sub">alunos + dependentes</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Vencidos</div>
+        <div class="kpi-value" id="kpiVencidos">—</div>
+        <div class="kpi-sub">contratos encerrados</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">Dependentes</div>
+        <div class="kpi-value" id="kpiAgregadores">—</div>
+        <div class="kpi-sub">vínculos secundários</div>
+      </div>
+    </div>
+
+    <!-- ── Alertas + Movimentações (2 colunas) ───────────────────────── -->
+    <div class="dash-sections-row">
+
+      <!-- Alertas -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title"><i data-lucide="bell-ring" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"></i>Alertas & Ações</span>
+        </div>
+        <div class="section-body">
+          <div id="alertasContainer">
+            <div class="loading"><div class="spinner"></div> Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Movimentações -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title"><i data-lucide="bar-chart-2" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"></i>Movimentações do Mês</span>
+          <button class="btn btn-secondary" id="btnBookmarklet" onclick="mostrarBookmarklet()" style="font-size:11px;padding:4px 10px;display:none">
+            <i data-lucide="link" style="width:11px;height:11px;vertical-align:-1px;margin-right:3px"></i>Bookmarklet
+          </button>
+        </div>
+        <div id="movSinteticoNotice" style="display:none;padding:10px 16px;background:rgba(245,158,11,0.08);border-bottom:1px solid rgba(245,158,11,0.2);font-size:12px;color:#F59E0B">
+          <i data-lucide="alert-triangle" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px"></i>
+          Dados parciais — cancelamentos, rematrículas e desistências requerem login no PACTO.
+          <a href="#" onclick="mostrarBookmarklet();return false" style="color:#60A5FA;margin-left:6px">Usar Bookmarklet</a>
+        </div>
+        <div class="section-body" style="padding:0">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Indicador</th>
+                  <th style="text-align:right">Hoje</th>
+                  <th style="text-align:right">Mês</th>
+                </tr>
+              </thead>
+              <tbody id="movimentacaoBody">
+                <tr><td>Matriculados</td><td style="text-align:right" id="movMatHoje">—</td><td style="text-align:right" id="movMatMes">—</td></tr>
+                <tr><td>Rematriculados</td><td style="text-align:right" id="movRematHoje">—</td><td style="text-align:right" id="movRematMes">—</td></tr>
+                <tr><td style="color:var(--color-orange)">Cancelados</td><td style="text-align:right;color:var(--color-orange)" id="movCanHoje">—</td><td style="text-align:right;color:var(--color-orange)" id="movCanMes">—</td></tr>
+                <tr><td style="color:var(--color-orange)">Desistência</td><td style="text-align:right;color:var(--color-orange)" id="movDesHoje">—</td><td style="text-align:right;color:var(--color-orange)" id="movDesMes">—</td></tr>
+                <tr><td>Trancados</td><td style="text-align:right" id="movTraHoje">—</td><td style="text-align:right" id="movTraMes">—</td></tr>
+                <tr style="background:var(--color-hover);font-weight:700">
+                  <td>Saldo Net</td>
+                  <td style="text-align:right" id="movSaldoHoje">—</td>
+                  <td style="text-align:right" id="movSaldoMes">—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Check-ins ──────────────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="activity" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"></i>Últimos Check-ins</span>
+      </div>
+      <div class="section-body">
+        <div id="checkinsContainer">
+          <div class="loading"><div class="spinner"></div> Carregando...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: FUNIL CRM
+  ════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-funil">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 12px 0;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:16px;font-weight:600;display:flex;align-items:center;gap:6px"><i data-lucide="target" style="width:16px;height:16px"></i> Oportunidades</span>
+        <input type="text" class="form-control" style="width:180px;font-size:12px" placeholder="Buscar..." id="searchOp" oninput="filtrarKanban()" />
+        <select class="form-control" id="filtroEtapaOp" style="width:130px;font-size:12px" onchange="loadOportunidades()">
+          <option value="">Todas as etapas</option>
+          <option value="LEAD">Lead</option>
+          <option value="CONTATO">Contato</option>
+          <option value="VISITA">Visita</option>
+          <option value="PROPOSTA">Proposta</option>
+          <option value="FECHADO">Fechado</option>
+          <option value="PERDIDO">Perdido</option>
+        </select>
+        <select class="form-control" id="filtroPeriodoOp" style="width:130px;font-size:12px" onchange="loadOportunidades()">
+          <option value="">Todos os períodos</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="30" selected>Últimos 30 dias</option>
+          <option value="60">Últimos 60 dias</option>
+          <option value="90">Últimos 90 dias</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" style="font-size:12px" onclick="loadOportunidades()">↻ Atualizar</button>
+        <button class="btn btn-primary" onclick="abrirModalNovaOp()">+ Nova Oportunidade</button>
+        <button class="btn btn-secondary" id="btnImportarInativos" onclick="importarInativos()" title="Importa clientes inativos do PACTO como leads para reativação" style="font-size:12px"><i data-lucide="download" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Importar Inativos</button>
+        <button class="btn btn-secondary" onclick="importarInadimplentesParaFunil()" title="Importa inadimplentes do cache como leads de cobrança" style="font-size:12px;color:var(--color-orange);border-color:rgba(249,115,22,0.3)"><i data-lucide="alert-triangle" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Importar Inadimplentes</button>
+      </div>
+    </div>
+    <div class="kanban" id="kanbanBoard">
+      <div class="loading"><div class="spinner"></div> Carregando...</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: ALUNOS ATIVOS
+  ════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-alunos">
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--color-surface);padding:4px;border-radius:var(--radius-md);width:fit-content;border:1px solid var(--color-border)">
+      <button id="subtabAtivos" onclick="switchSubtabAlunos('ativos')" style="padding:6px 18px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:var(--color-accent);color:white;transition:all 0.15s">Ativos</button>
+      <button id="subtabInadimplentes" onclick="switchSubtabAlunos('inadimplentes')" style="padding:6px 18px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:transparent;color:var(--color-text-secondary);transition:all 0.15s">Inadimplentes</button>
+    </div>
+
+    <!-- Ativos section -->
+    <div id="secaoAtivos">
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="users" style="width:15px;height:15px;vertical-align:middle"></i> Alunos Ativos</span>
+        <div style="display:flex;gap:8px">
+          <input type="text" class="form-control" style="width:200px" placeholder="Buscar por nome..." id="searchAlunos" oninput="filtrarAlunos()" />
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Matrícula</th>
+                <th>Nome</th>
+                <th>Situação</th>
+                <th>Tipo Acesso</th>
+                <th>Acesso Até</th>
+                <th>Último Acesso</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="alunosBody">
+              <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div> <!-- end secaoAtivos -->
+
+  <!-- Inadimplentes section -->
+  <div id="secaoInadimplentes" style="display:none">
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title" style="color:var(--color-orange)"><i data-lucide="alert-triangle" style="width:15px;height:15px;vertical-align:middle"></i> Alunos Inadimplentes</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" class="form-control" style="width:200px" placeholder="Buscar por nome..." id="searchInad" oninput="filtrarInadimplentes()" />
+        <button class="btn btn-secondary" onclick="importarInadimplentesParaFunil()" style="font-size:12px;white-space:nowrap" title="Cria leads no Funil CRM para cada inadimplente e inicia cadência de cobrança">
+          <i data-lucide="git-merge" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px"></i>Importar para Funil
+        </button>
+        <button class="btn btn-primary" onclick="dispararParaInadimplentes()" style="font-size:12px;white-space:nowrap">
+          <i data-lucide="send" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px"></i>Disparar para Todos
+        </button>
+      </div>
+    </div>
+    <div class="section-body" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Matrícula</th>
+              <th>Nome</th>
+              <th>Situação</th>
+              <th>Telefone</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="inadimplentesBody">
+            <tr><td colspan="5"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div> <!-- end secaoInadimplentes -->
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: FINANCEIRO
+  ════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-financeiro">
+    <div class="kpi-grid">
+      <div class="kpi-card green">
+        <div class="kpi-label">Receita Recebida (mês)</div>
+        <div class="kpi-value" id="finReceita">—</div>
+        <div class="kpi-sub">pagamentos confirmados</div>
+      </div>
+      <div class="kpi-card yellow">
+        <div class="kpi-label">A Receber</div>
+        <div class="kpi-value" id="finAReceber">—</div>
+        <div class="kpi-sub">parcelas pendentes</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Inadimplência</div>
+        <div class="kpi-value" id="finInad">—</div>
+        <div class="kpi-sub">em atraso</div>
+      </div>
+    </div>
+
+    <!-- KPIs derivados -->
+    <div class="kpi-grid" style="margin-top:12px" id="finKpisDerived">
+      <div class="kpi-card" style="border-color:rgba(99,102,241,0.3);background:rgba(99,102,241,0.06)">
+        <div class="kpi-label">Ticket Médio</div>
+        <div class="kpi-value" id="finTicket" style="color:#818cf8">—</div>
+        <div class="kpi-sub">receita ÷ ativos</div>
+      </div>
+      <div class="kpi-card" style="border-color:rgba(251,146,60,0.3);background:rgba(251,146,60,0.06)">
+        <div class="kpi-label">Taxa de Inadimplência</div>
+        <div class="kpi-value" id="finTaxaInad" style="color:#fb923c">—</div>
+        <div class="kpi-sub">% sobre base ativa</div>
+      </div>
+      <div class="kpi-card" style="border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.06)">
+        <div class="kpi-label">Risco de Churn</div>
+        <div class="kpi-value" id="finRiscoChurn" style="color:#f87171">—</div>
+        <div class="kpi-sub">sem acesso há 14+ dias</div>
+      </div>
+    </div>
+
+    <!-- Matrículas por Mês -->
+    <div class="section" style="margin-top:16px">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="trending-up" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"></i>Evolução de Matrículas</span>
+        <span style="font-size:11px;color:var(--color-text-muted)">últimos 6 meses</span>
+      </div>
+      <div class="section-body">
+        <div id="finChartMatriculas" style="padding:8px 0"></div>
+      </div>
+    </div>
+
+    <!-- Alunos em Risco de Churn -->
+    <div class="section" style="margin-top:16px">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="alert-triangle" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"></i>Alunos em Risco</span>
+        <span style="font-size:11px;color:var(--color-text-muted)">sem acesso há 14+ dias · top 15</span>
+      </div>
+      <div class="section-body">
+        <div id="finRiscoContainer"><div class="loading"><div class="spinner"></div> Carregando...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: WHATSAPP
+  ════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-whatsapp">
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="send" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"></i>Enviar Mensagem</span>
+      </div>
+      <div class="section-body">
+        <div class="wpp-composer">
+          <div>
+            <div class="form-group">
+              <label class="form-label">Template</label>
+              <select class="form-control" id="msgTemplate" onchange="previewMensagem()">
+                <option value="">— Escolha um template —</option>
+                <optgroup label="Leads / Prospecção">
+                  <option value="confirmacao_visita">Confirmação de Visita</option>
+                  <option value="lembrete_visita">Lembrete D-1</option>
+                  <option value="lembrete_dia">Lembrete no Dia</option>
+                  <option value="reagendamento">Reagendamento</option>
+                  <option value="pos_atendimento">Pós-Atendimento</option>
+                  <option value="follow_up_d1">Follow-up D+1</option>
+                  <option value="follow_up_d3">Follow-up D+3</option>
+                  <option value="follow_up_d7">Follow-up D+7</option>
+                </optgroup>
+                <optgroup label="Alunos Ativos">
+                  <option value="boas_vindas">Boas-vindas</option>
+                  <option value="lembrete_renovacao">Lembrete de Renovação</option>
+                  <option value="pesquisa_satisfacao">Pesquisa de Satisfação</option>
+                </optgroup>
+                <optgroup label="Retenção / Cobrança">
+                  <option value="reativacao">Reativação</option>
+                  <option value="cobranca_amigavel">Cobrança Amigável</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Nome do Destinatário</label>
+              <input type="text" class="form-control" id="msgNome" placeholder="Ex: João Silva" oninput="previewMensagem()" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Telefone (com DDD)</label>
+              <input type="text" class="form-control" id="msgTelefone" placeholder="11999999999" />
+            </div>
+
+            <div class="form-group" id="extraFields"></div>
+
+            <div class="form-group">
+              <label class="form-label">Mensagem personalizada (opcional)</label>
+              <textarea class="form-control" id="msgCustom" rows="3" placeholder="Deixe em branco para usar o template acima..." oninput="previewMensagem()"></textarea>
+            </div>
+
+            <!-- Imagem opcional -->
+            <div class="form-group">
+              <label class="form-label" style="display:flex;align-items:center;gap:6px">
+                <i data-lucide="image" style="width:13px;height:13px"></i> Imagem (opcional)
+              </label>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <label class="btn btn-secondary" style="font-size:11px;cursor:pointer;margin:0">
+                  <i data-lucide="upload" style="width:11px;height:11px;vertical-align:-2px;margin-right:3px"></i>Anexar
+                  <input type="file" id="msgImagemInput" accept="image/*" style="display:none" onchange="msgPreviewImagem(this)">
+                </label>
+                <span id="msgImagemNome" style="font-size:11px;color:var(--color-text-muted)">Nenhuma imagem</span>
+                <button id="msgImagemRemover" style="display:none;background:none;border:none;color:#f87171;font-size:11px;cursor:pointer;padding:0" onclick="msgRemoverImagem()">✕ remover</button>
+              </div>
+              <img id="msgImagemPreview" src="" alt="" style="display:none;margin-top:8px;max-height:100px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.1)">
+            </div>
+
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-green" onclick="enviarMensagem()"><i data-lucide="send" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Enviar</button>
+              <button class="btn btn-secondary" onclick="previewMensagem()"><i data-lucide="eye" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Preview</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="form-group">
+              <label class="form-label">Preview da mensagem</label>
+              <div class="wpp-preview">
+                <div class="wpp-bubble" id="wppPreview">Selecione um template para ver o preview...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Disparo em Massa -->
+    <div class="broadcast-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:var(--color-text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i data-lucide="radio" style="width:13px;height:13px"></i> Disparo para Base Completa</div>
+          <div class="broadcast-count" id="broadcastCount">—</div>
+          <div style="font-size:12px;color:var(--color-text-muted);margin-top:4px">alunos ativos com telefone</div>
+        </div>
+        <div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:8px;margin-bottom:4px">
+            <label style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-text-muted);display:flex;align-items:center;gap:6px">
+              <span>Destino:</span>
+            </label>
+            <select class="form-control" id="broadcastTarget" style="flex:1" onchange="calcularBroadcast()">
+              <option value="ativos">Todos os Alunos Ativos</option>
+              <option value="inadimplentes">Somente Inadimplentes</option>
+            </select>
+          </div>
+          <select class="form-control" id="broadcastTemplate">
+            <option value="">— Selecione o template —</option>
+            <optgroup label="Avisos Gerais">
+              <option value="boas_vindas">Boas-vindas</option>
+              <option value="pesquisa_satisfacao">Pesquisa de Satisfação</option>
+              <option value="lembrete_renovacao">Lembrete de Renovação</option>
+            </optgroup>
+            <optgroup label="Cobrança / Retenção">
+              <option value="cobranca_amigavel">Cobrança Amigável</option>
+              <option value="reativacao">Reativação</option>
+            </optgroup>
+          </select>
+          <textarea class="form-control" id="broadcastCustomMsg" rows="2" placeholder="Ou escreva uma mensagem personalizada (substitui o template)..."></textarea>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="confirmarBroadcast()" style="flex:1"><i data-lucide="send" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Disparar para Base</button>
+            <button class="btn btn-secondary" onclick="calcularBroadcast()"><i data-lucide="refresh-cw" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Atualizar</button>
+          </div>
+        </div>
+      </div>
+      <div class="broadcast-progress" id="broadcastProgress" style="display:none">
+        <div class="broadcast-progress-bar" id="broadcastBar"></div>
+      </div>
+      <div id="broadcastStatus" style="font-size:12px;color:var(--color-text-muted);margin-top:8px"></div>
+    </div>
+
+    <!-- Histórico de envios -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="list" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"></i>Histórico de Envios</span>
+      </div>
+      <div class="section-body">
+        <div id="historicoEnvios">
+          <div class="empty">Nenhuma mensagem enviada nesta sessão.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ DISPARO EM MASSA ═══════════════ -->
+    <div class="section" style="margin-top:16px">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="zap" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"></i>Disparo em Massa</span>
+        <span style="font-size:11px;color:var(--color-text-muted)">anti-bloqueio · variações · imagem</span>
+      </div>
+      <div class="section-body">
+
+        <!-- PASSO 1 — Base de contatos -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);letter-spacing:.06em;margin-bottom:8px">1 · BASE DE CONTATOS (CSV)</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary" style="font-size:11px" onclick="bulkBaixarModeloCSV()">
+              <i data-lucide="download" style="width:12px;height:12px;vertical-align:-2px;margin-right:4px"></i>Modelo CSV
+            </button>
+            <label class="btn btn-secondary" style="font-size:11px;cursor:pointer">
+              <i data-lucide="upload" style="width:12px;height:12px;vertical-align:-2px;margin-right:4px"></i>Importar CSV
+              <input type="file" accept=".csv,.txt" style="display:none" onchange="bulkImportarCSV(this)">
+            </label>
+            <button class="btn btn-secondary" style="font-size:11px" onclick="bulkUsarAtivos()">
+              <i data-lucide="users" style="width:12px;height:12px;vertical-align:-2px;margin-right:4px"></i>Usar Alunos Ativos
+            </button>
+          </div>
+          <textarea id="bulkCSVPaste" class="form-control" rows="4"
+            placeholder="Cole aqui o CSV:&#10;nome,telefone&#10;João Silva,11999990001&#10;Maria,11999990002"
+            oninput="bulkParsearCSV()" style="font-family:monospace;font-size:11px"></textarea>
+          <div id="bulkContatosInfo" style="margin-top:6px;font-size:12px;color:var(--color-text-muted)"></div>
+        </div>
+
+        <!-- PASSO 2 — Variações de mensagem -->
+        <div style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);letter-spacing:.06em">2 · VARIAÇÕES DE MENSAGEM</div>
+            <button class="btn btn-secondary" style="font-size:11px" onclick="bulkAddVariacao()">
+              <i data-lucide="plus" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px"></i>+ Variação
+            </button>
+          </div>
+          <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:8px">
+            Use <code style="background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">{nome}</code> para o nome do contato. O sistema alterna entre as variações aleatoriamente.
+          </div>
+          <div id="bulkVariacoesContainer">
+            <div class="bulk-variacao" data-idx="0">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <span style="font-size:11px;color:var(--color-accent);font-weight:600">Variação 1</span>
+                <button class="btn btn-secondary" style="font-size:10px;padding:2px 6px;margin-left:auto" onclick="bulkRemoverVariacao(this)">✕</button>
+              </div>
+              <textarea class="form-control bulk-msg-variacao" rows="3"
+                placeholder="Oi, {nome}! Tudo bem? 😊&#10;&#10;Temos uma condição especial para você na *24H NORTE*!&#10;É só responder aqui. 💪"
+                style="font-size:12px"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- PASSO 3 — Imagem (opcional) -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);letter-spacing:.06em;margin-bottom:8px">3 · IMAGEM (OPCIONAL)</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <label class="btn btn-secondary" style="font-size:11px;cursor:pointer">
+              <i data-lucide="image" style="width:12px;height:12px;vertical-align:-2px;margin-right:4px"></i>Anexar Imagem
+              <input type="file" id="bulkImagemInput" accept="image/*" style="display:none" onchange="bulkPreviewImagem(this)">
+            </label>
+            <span id="bulkImagemNome" style="font-size:11px;color:var(--color-text-muted)">Nenhuma imagem selecionada</span>
+            <button id="bulkImagemRemover" class="btn btn-secondary" style="font-size:10px;padding:2px 7px;display:none" onclick="bulkRemoverImagem()">✕ Remover</button>
+          </div>
+          <img id="bulkImagemPreview" src="" alt="" style="display:none;margin-top:10px;max-height:120px;border-radius:8px;border:1px solid rgba(255,255,255,0.1)">
+        </div>
+
+        <!-- PASSO 4 — Config anti-bloqueio -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);letter-spacing:.06em;margin-bottom:10px">4 · CONFIG ANTI-BLOQUEIO</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:360px">
+            <div>
+              <label class="form-label">Delay mínimo (s)</label>
+              <input type="number" class="form-control" id="bulkDelayMin" value="8" min="3" max="60">
+            </div>
+            <div>
+              <label class="form-label">Delay máximo (s)</label>
+              <input type="number" class="form-control" id="bulkDelayMax" value="20" min="5" max="120">
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--color-text-muted)">
+            ⚡ Delay randômico entre mensagens — reduz risco de ban. Mínimo recomendado: 8s.
+          </div>
+        </div>
+
+        <!-- BOTÃO + PROGRESSO -->
+        <div id="bulkAcoes">
+          <button class="btn btn-green" onclick="bulkIniciarDisparo()" id="bulkBtnIniciar">
+            <i data-lucide="send" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px"></i>Iniciar Disparo
+          </button>
+        </div>
+
+        <div id="bulkProgressoContainer" style="display:none;margin-top:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:12px;font-weight:600" id="bulkProgressoLabel">Aguardando...</span>
+            <button class="btn btn-secondary" style="font-size:11px;color:#f87171" onclick="bulkAbortar()">⏹ Parar</button>
+          </div>
+          <div style="background:rgba(255,255,255,.06);border-radius:6px;height:8px;overflow:hidden">
+            <div id="bulkProgressoBar" style="height:100%;background:var(--color-accent);border-radius:6px;transition:width .4s;width:0%"></div>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:8px;font-size:11px">
+            <span style="color:#4ade80">✓ Enviados: <b id="bulkSent">0</b></span>
+            <span style="color:#f87171">✗ Erros: <b id="bulkErros">0</b></span>
+            <span style="color:var(--color-text-muted)">⏭ Pulados: <b id="bulkSkipped">0</b></span>
+            <span style="color:var(--color-text-muted)">Total: <b id="bulkTotal">0</b></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: CADÊNCIAS
+  ════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-cadencias">
+
+    <!-- ── Disparo em Massa ──────────────────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="zap" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"></i>Disparar Cadência em Massa</span>
+      </div>
+      <div class="section-body">
+
+        <!-- Step 1: Selecionar Base -->
+        <div style="margin-bottom:20px">
+          <div class="form-label" style="margin-bottom:10px;font-size:13px;color:var(--color-muted)">1. Escolha a base de contatos</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+            <div class="base-card" id="baseCardAtivos" onclick="selecionarBase('ativos')">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+                <i data-lucide="users" style="width:20px;height:20px;color:var(--color-green)"></i>
+                <span style="font-weight:600;font-size:14px">Alunos Ativos</span>
+              </div>
+              <div style="font-size:22px;font-weight:700;color:var(--color-green)" id="countAtivos">—</div>
+              <div style="font-size:11px;color:var(--color-muted);margin-top:2px">contatos com telefone</div>
+            </div>
+            <div class="base-card" id="baseCardInadimplentes" onclick="selecionarBase('inadimplentes')">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+                <i data-lucide="alert-triangle" style="width:20px;height:20px;color:#F59E0B"></i>
+                <span style="font-weight:600;font-size:14px">Inadimplentes</span>
+              </div>
+              <div style="font-size:22px;font-weight:700;color:#F59E0B" id="countInadimplentes">—</div>
+              <div style="font-size:11px;color:var(--color-muted);margin-top:2px">contatos com telefone</div>
+            </div>
+            <div class="base-card" id="baseCardOportunidades" onclick="selecionarBase('oportunidades')">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+                <i data-lucide="git-merge" style="width:20px;height:20px;color:var(--color-accent-light)"></i>
+                <span style="font-weight:600;font-size:14px">Oportunidades CRM</span>
+              </div>
+              <div style="font-size:22px;font-weight:700;color:var(--color-accent-light)" id="countOportunidades">—</div>
+              <div style="font-size:11px;color:var(--color-muted);margin-top:2px">leads ativos no funil</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Selecionar Cadência -->
+        <div style="margin-bottom:20px">
+          <div class="form-label" style="margin-bottom:10px;font-size:13px;color:var(--color-muted)">2. Escolha o tipo de cadência</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="cadenciaTiposGrid">
+            <div class="cadencia-tipo-card" id="ct_lead_novo" onclick="selecionarTipoCadencia('lead_novo')">
+              <div style="font-weight:600;margin-bottom:4px">Lead Novo</div>
+              <div style="font-size:11px;color:var(--color-muted)">D+0, D+1, D+3, D+7 • 4 msgs</div>
+            </div>
+            <div class="cadencia-tipo-card" id="ct_visita_sem_fechamento" onclick="selecionarTipoCadencia('visita_sem_fechamento')">
+              <div style="font-weight:600;margin-bottom:4px">Visita sem Fechamento</div>
+              <div style="font-size:11px;color:var(--color-muted)">Pós-atendimento + follow-ups • 4 msgs</div>
+            </div>
+            <div class="cadencia-tipo-card" id="ct_reativacao" onclick="selecionarTipoCadencia('reativacao')">
+              <div style="font-weight:600;margin-bottom:4px">Reativação</div>
+              <div style="font-size:11px;color:var(--color-muted)">D+0, D+7, D+21 • 3 msgs</div>
+            </div>
+            <div class="cadencia-tipo-card" id="ct_renovacao" onclick="selecionarTipoCadencia('renovacao')">
+              <div style="font-weight:600;margin-bottom:4px">Renovação</div>
+              <div style="font-size:11px;color:var(--color-muted)">-30d, -15d, -7d, -2d • 4 msgs</div>
+            </div>
+            <div class="cadencia-tipo-card" id="ct_agendamento" onclick="selecionarTipoCadencia('agendamento')">
+              <div style="font-weight:600;margin-bottom:4px">Agendamento</div>
+              <div style="font-size:11px;color:var(--color-muted)">Confirmação + lembretes • 3 msgs</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Confirmar -->
+        <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--color-elevated);border-radius:10px;border:1px solid rgba(255,255,255,0.05)">
+          <div style="flex:1">
+            <div style="font-size:13px;color:var(--color-muted);margin-bottom:4px">Resumo do disparo</div>
+            <div id="massaResumo" style="font-size:15px;font-weight:600;color:var(--color-text)">
+              Selecione a base e o tipo de cadência acima
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="confirmarMassa()" id="btnMassa" disabled style="min-width:160px">
+            <i data-lucide="zap" style="width:15px;height:15px;vertical-align:-2px;margin-right:6px"></i>
+            Disparar para todos
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Iniciar cadência individual ───────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="user-plus" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"></i>Cadência Individual</span>
+      </div>
+      <div class="section-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end">
+          <div>
+            <label class="form-label">Nome</label>
+            <input type="text" class="form-control" id="cadNome" placeholder="Nome do contato" />
+          </div>
+          <div>
+            <label class="form-label">Telefone</label>
+            <input type="text" class="form-control" id="cadTelefone" placeholder="11999999999" />
+          </div>
+          <div>
+            <label class="form-label">Tipo de Cadência</label>
+            <select class="form-control" id="cadTipo">
+              <option value="lead_novo">Lead Novo</option>
+              <option value="visita_sem_fechamento">Visita sem Fechamento</option>
+              <option value="agendamento">Agendamento</option>
+              <option value="renovacao">Renovação</option>
+              <option value="reativacao">Reativação</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="iniciarCadencia()">
+            <i data-lucide="play" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"></i>
+            Iniciar
+          </button>
+        </div>
+        <input type="hidden" id="cadOportunidadeId" value="" />
+      </div>
+    </div>
+
+    <!-- ── Fila de Cadências ─────────────────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="clock" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"></i>Fila de Cadências</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge pendente" id="filaCount">0 pendentes</span>
+          <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="renderCadencias()">
+            <i data-lucide="refresh-cw" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px"></i>Atualizar
+          </button>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Lead</th>
+                <th>Descrição</th>
+                <th>Data Envio</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="cadenciasBody">
+              <tr><td colspan="5"><div class="empty">Nenhuma cadência agendada.</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: META ADS
+  ════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-meta">
+
+    <!-- Filtro de período -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="display:flex;gap:6px" id="metaPeriodBtns">
+        <button class="btn btn-secondary meta-period active" data-period="today"       onclick="metaSetPeriod('today')">Hoje</button>
+        <button class="btn btn-secondary meta-period"        data-period="last_7d"     onclick="metaSetPeriod('last_7d')">7 dias</button>
+        <button class="btn btn-secondary meta-period"        data-period="last_30d"    onclick="metaSetPeriod('last_30d')">30 dias</button>
+        <button class="btn btn-secondary meta-period"        data-period="this_month"  onclick="metaSetPeriod('this_month')">Este mês</button>
+      </div>
+      <div style="font-size:11px;color:var(--color-muted)" id="metaUpdatedAt"></div>
+    </div>
+
+    <!-- KPIs resumo -->
+    <div class="kpi-grid" id="metaKpiGrid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:20px">
+      <div class="kpi-card"><div class="kpi-label">Gasto Total</div><div class="kpi-value" id="mkpiSpend">—</div><div class="kpi-sub">R$ investido</div></div>
+      <div class="kpi-card"><div class="kpi-label">Impressões</div><div class="kpi-value" id="mkpiImpr">—</div><div class="kpi-sub">total de views</div></div>
+      <div class="kpi-card"><div class="kpi-label">Alcance</div><div class="kpi-value" id="mkpiReach">—</div><div class="kpi-sub">pessoas únicas</div></div>
+      <div class="kpi-card"><div class="kpi-label">Cliques</div><div class="kpi-value" id="mkpiClicks">—</div><div class="kpi-sub">link clicks</div></div>
+      <div class="kpi-card"><div class="kpi-label">Leads</div><div class="kpi-value" id="mkpiLeads">—</div><div class="kpi-sub">form preenchidos</div></div>
+      <div class="kpi-card"><div class="kpi-label">Mensagens</div><div class="kpi-value" id="mkpiMsgs">—</div><div class="kpi-sub">conversas iniciadas</div></div>
+    </div>
+
+    <!-- Unidade fixada: NORTE -->
+    <div style="margin-bottom:16px">
+      <span style="font-size:11px;font-weight:600;letter-spacing:0.06em;color:var(--color-accent);background:var(--color-accent-tint);border:0.5px solid var(--color-accent);border-radius:var(--radius-full);padding:4px 14px">NORTE</span>
+    </div>
+
+    <!-- Tabela de campanhas -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="trending-up" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"></i>Campanhas Ativas</span>
+        <span id="metaCampCount" style="font-size:11px;color:var(--color-muted)"></span>
+      </div>
+      <div class="section-body" style="padding:0">
+        <div id="metaTableWrap">
+          <div class="loading"><div class="spinner"></div> Buscando campanhas...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leads de Campanhas Meta no CRM -->
+    <div class="section" style="margin-top:20px">
+      <div class="section-header">
+        <span class="section-title"><i data-lucide="user-plus" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"></i>Leads de Campanha no CRM</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span id="metaLeadsCount" style="font-size:11px;color:var(--color-muted)"></span>
+          <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px" onclick="metaOpenImport()">
+            <i data-lucide="upload" style="width:12px;height:12px"></i> Importar leads
+          </button>
+          <button class="btn btn-primary" style="font-size:11px;padding:5px 10px" onclick="metaBulkSend()">
+            <i data-lucide="send" style="width:12px;height:12px"></i> Disparar p/ NORTE
+          </button>
+        </div>
+      </div>
+      <div class="section-body" style="padding:0">
+        <div id="metaLeadsWrap">
+          <div class="loading"><div class="spinner"></div> Carregando leads...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Importação -->
+    <div id="metaImportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center">
+      <div style="background:var(--color-card);border:0.5px solid var(--color-border-strong);border-radius:12px;padding:28px;width:540px;max-width:95vw">
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px">Importar Leads do Meta Ads</div>
+        <div style="font-size:12px;color:var(--color-muted);margin-bottom:16px">
+          Cole o CSV exportado do Meta Ads Manager (Nome, Telefone, E-mail, Campanha) ou JSON array.
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label class="form-label">Campanha / Unidade</label>
+          <select class="form-control" id="importCampanha" style="margin-bottom:8px">
+            <option value="[V4][NORTE]  CADASTRO FORMULARIO NATIVO - AD">[NORTE] Cadastro Formulário Nativo</option>
+            <option value="[V4][NORTE] GYMBOT - AD">[NORTE] GYMBOT</option>
+            <option value="[V4] [ALPHAVILLE] CADASTRO FORMULARIO NATIVO - AD">[ALPHAVILLE] Formulário</option>
+            <option value="[V4][TATUAPE] CADASTRO FORMULARIO NATIVO - AD">[TATUAPÉ] Formulário</option>
+            <option value="outro">Outra (informar abaixo)</option>
+          </select>
+          <input type="text" class="form-control" id="importCampanhaCustom" placeholder="Nome da campanha (se 'Outra' selecionada)" style="display:none;margin-top:6px">
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label class="form-label">Dados dos leads (CSV ou JSON)</label>
+          <textarea class="form-control" id="importData" rows="8"
+            placeholder="CSV: Nome,Telefone,Email&#10;João Silva,11999999999,joao@email.com&#10;&#10;JSON: [{&quot;nome&quot;:&quot;João&quot;,&quot;telefone&quot;:&quot;11999999999&quot;}]"
+            style="font-family:monospace;font-size:12px"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="document.getElementById('metaImportModal').style.display='none'">Cancelar</button>
+          <button class="btn btn-primary" onclick="metaExecutarImport()">
+            <i data-lucide="check" style="width:13px;height:13px"></i> Importar
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+</div> <!-- main-wrapper -->
+
+<div id="toast-container"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DASHBOARD STATE
+// ═══════════════════════════════════════════════════════
+
+let dashData = {};
+let enviosHistorico = [];
+let cadenciasLocal = [];
+let alunosData = [];
+
+// Garante nome sem espaços nas bordas (evita quebrar negrito WhatsApp)
+const N = (n) => (String(n||'').trim()) || 'Fulano';
+
+const TEMPLATES = {
+  confirmacao_visita: (n, p) => `Olá, *${N(n)}*! 👋\n\nSua visita à *24H NORTE* está confirmada!\n\n📅 *Data:* ${p.data||'[DATA]'}\n🕐 *Horário:* ${p.hora||'[HORA]'}\n\nTe esperamos para conhecer nossa estrutura! 💪`,
+  lembrete_visita: (n, p) => `Oi, *${N(n)}*! 😊\n\nLembrando que *amanhã* você tem visita agendada na *24H NORTE*!\n\n🕐 *Horário:* ${p.hora||'[HORA]'}\n\nTe esperamos! 💪`,
+  lembrete_dia: (n, p) => `Bom dia, *${N(n)}*! ☀️\n\nHoje é o dia da sua visita à *24H NORTE*!\n\n🕐 *Horário:* ${p.hora||'[HORA]'}\n\nQualquer imprevisto, nos avise. 💪`,
+  reagendamento: (n) => `Oi, *${N(n)}*! Tudo bem?\n\nPercebemos que você não pôde comparecer à sua visita na *24H NORTE*.\n\nSem problemas! 😊\n\n👉 *Quando seria um bom horário para remarcar?*\n\nTemos horários de *6h às 22h*, seg-sáb, e *8h às 14h* aos domingos.`,
+  pos_atendimento: (n) => `Oi, *${N(n)}*! 😊\n\nFoi muito bom receber você hoje na *24H NORTE*!\n\nFicou com alguma dúvida sobre os planos? Estou aqui para ajudar.\n\n💪 Vamos juntos nessa jornada fitness?`,
+  follow_up_d1: (n, p) => `Oi, *${N(n)}*! Tudo certo?\n\nLembrei de você e do interesse no *${p.plano||'nosso plano'}*. 🏋️\n\nPosso te ajudar com mais informações?\n\nEstamos com condições especiais esta semana! 🎯`,
+  follow_up_d3: (n) => `Oi, *${N(n)}*! Como você está?\n\nAinda pensando em começar seus treinos na *24H NORTE*? 💪\n\nPosso te apresentar uma condição exclusiva!\n\nÉ só responder aqui! 😊`,
+  follow_up_d7: (n) => `Oi, *${N(n)}*! 👋\n\nQuero te contar sobre nossa *oferta especial* de esta semana.\n\n🎯 Condições imperdíveis para começar!\n\nSe quiser saber mais, é só responder. 😊`,
+  boas_vindas: (n, p) => `*Bem-vindo(a) à família 24H NORTE!* 🎉🏋️\n\nOlá, *${N(n)}*! Estamos muito felizes em te ter conosco!\n\n✅ *Plano:* ${p.plano||'[PLANO]'}\n🏆 Prontos para te ajudar a alcançar seus objetivos!\n\n*Bora treinar!* 🚀`,
+  lembrete_renovacao: (n, p) => `Oi, *${N(n)}*! 😊\n\nSeu plano na *24H NORTE* vence em *${p.vencimento||'[DATA]'}*.\n\nRenove agora e mantenha seu ritmo! 💪\n\nTenho condições especiais para quem renova antecipado!`,
+  reativacao: (n, p) => `Oi, *${N(n)}*! Sentimos sua falta! 😢\n\n${p.dias?`Faz *${p.dias} dias* que você não passa por aqui.\n\n`:''}Queremos te ver de volta na *24H NORTE*! 🏋️\n\nTemos uma *oferta especial de reativação* para você. Posso te contar mais?`,
+  cobranca_amigavel: (n, p) => `Oi, *${N(n)}*! Tudo bem?\n\nIdentificamos uma pendência de *R$ ${p.valor||'0,00'}* em seu cadastro na *24H NORTE*.\n\nPara evitar a suspensão do acesso, pode regularizar?\n\nQualquer dúvida, estou à disposição. 😊`,
+  pesquisa_satisfacao: (n) => `Oi, *${N(n)}*! 👋\n\nComo tem sido sua experiência na *24H NORTE*?\n\nDe *1 a 5*, como você avaliaria:\n1️⃣ Péssimo  2️⃣ Ruim  3️⃣ Regular  4️⃣ Bom  5️⃣ Excelente\n\nSeu feedback é muito importante! 🙏`,
+};
+
+// ═══════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════
+
+function switchTab(id) {
+  // DOM order: dashboard, alunos, funil, financeiro, whatsapp, cadencias
+  const tabs = ['dashboard','alunos','funil','financeiro','whatsapp','cadencias','meta'];
+  document.querySelectorAll('.nav-item.tab').forEach((t, i) => {
+    t.classList.toggle('active', tabs[i] === id);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => {
+    c.classList.toggle('active', c.id === `tab-${id}`);
+  });
+
+  const titles = {
+    dashboard:  'Dashboard Overview',
+    alunos:     'Alunos Ativos',
+    funil:      'Funil CRM',
+    financeiro: 'Financeiro',
+    whatsapp:   'WhatsApp',
+    cadencias:  'Cadências',
+    meta:       'Meta Ads',
+  };
+  const el = document.getElementById('viewTitle');
+  if (el) el.textContent = titles[id] || id;
+
+  if (id === 'alunos') { loadAlunos(); switchSubtabAlunos('ativos'); }
+  if (id === 'cadencias') { renderCadencias(); loadMassaPreviews(); }
+  if (id === 'funil') loadOportunidades();
+  if (id === 'whatsapp') calcularBroadcast();
+  if (id === 'financeiro') loadFinanceiro();
+  if (id === 'meta') loadMeta();
+}
+
+// ═══════════════════════════════════════════════════════
+// DATA LOADING
+// ═══════════════════════════════════════════════════════
+
+async function forceSyncPacto(btn) {
+  const orig = btn.textContent;
+  btn.textContent = '⏳ Sincronizando...';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/dashboard/sync/force', { method: 'POST' });
+    const j = await r.json();
+    if (j.success) {
+      toast('Dados atualizados com sucesso!', 'success');
+      await refreshDashboard();
+    } else {
+      toast('Erro no sync: ' + (j.error || 'desconhecido'), 'error');
+    }
+  } catch (e) {
+    toast('Erro: ' + e.message, 'error');
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+async function refreshDashboard() {
+  document.getElementById('lastUpdate').textContent = 'Atualizando...';
+  try {
+    const [stats, checkins] = await Promise.allSettled([
+      fetch('/api/dashboard/stats').then(r => r.json()),
+      fetch('/api/dashboard/checkins').then(r => r.json()),
+    ]);
+
+    if (stats.status === 'fulfilled' && !stats.value.error) {
+      const d = stats.value;
+      dashData = d;
+
+      // ── KPIs Dashboard ───────────────────────────────────
+      setKpi('kpiAtivos',        d.ativos       ?? '—');
+      setKpi('kpiAgregadores',   d.agregadores  ?? '—');
+      setKpi('kpiTotal',         d.totalAlunos  ?? '—');
+      setKpi('kpiVencidos',      d.vencidos     ?? '—');
+      setKpi('kpiVendas',        d.novasVendas  ?? '—');
+      setKpi('kpiCancelados',    d.cancelamentos ?? '—');
+      setKpi('kpiInadimplentes', d.inadimplentes ?? '—');
+      setKpi('kpiLeads',         d.oportunidadesAtivas ?? 0);
+      setKpi('kpiRenovacoes',    d.renovacoes30d ?? '—');
+      setKpi('kpiCheckins',      d.checkinsHoje ?? '—');
+      setKpi('kpiReceita',       fmtMoeda(d.receita));
+
+      const saldo = (d.novasVendas || 0) - (d.cancelamentos || 0);
+      const cardSaldo = document.getElementById('cardSaldo');
+      if (cardSaldo) cardSaldo.className = 'kpi-card ' + (saldo >= 0 ? 'green' : 'red');
+      setKpi('kpiSaldo', (saldo > 0 ? '+' : '') + saldo);
+
+      // ── KPIs Financeiro (preenche já se disponível) ──────
+      setKpi('finReceita', fmtMoeda(d.receita));
+      setKpi('finInad',    d.inadimplentes ?? '—');
+      setKpi('finAReceber', fmtMoeda(d.aReceber));
+
+      renderAlertas(d);
+      renderFunil(d.funil || {});
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+      // ── Banner de status do auto-sync ────────────────────
+      const src = d._source;
+      const temSintetico = d.agregadores !== undefined || d.receita !== undefined;
+      if (src === 'sem-dados') {
+        showSyncBanner('Sincronizando dados do PACTO... aguarde alguns segundos', 'yellow');
+        setTimeout(refreshDashboard, 8000); // retry em 8s
+      } else if (src === 'auto' && temSintetico) {
+        hideSyncBanner(); // Tudo OK — dados completos via auto-sync
+      } else if (src === 'auto' && !temSintetico) {
+        const when = d._syncedAt ? new Date(d._syncedAt).toLocaleTimeString('pt-BR') : '?';
+        showSyncBanner(`Dados parciais (${when}) — Movimentações requerem PACTO_USER/PACTO_PASS no .env ou Bookmarklet`, 'yellow');
+        // Mostrar aviso inline na tabela de movimentações
+        const notice = document.getElementById('movSinteticoNotice');
+        const btnBk = document.getElementById('btnBookmarklet');
+        if (notice) { notice.style.display = 'block'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
+        if (btnBk) btnBk.style.display = 'inline-flex';
+      } else if (src === 'cache') {
+        const when = d._syncedAt ? new Date(d._syncedAt).toLocaleString('pt-BR') : '?';
+        showSyncBanner(`Cache de ${when}`, 'yellow');
+      } else {
+        hideSyncBanner();
+      }
+
+      // ── Tabela de movimentações (raw sync) ───────────────
+      const m = d._raw?.movimentacao?.table || d._raw?.movimentacao || {};
+      setTxt('movMatHoje',   m.matriculadosHoje);    setTxt('movMatMes',   m.matriculadosMes);
+      setTxt('movRematHoje', m.rematriculadosHoje);  setTxt('movRematMes', m.rematriculadosMes);
+      setTxt('movCanHoje',   m.canceladosHoje);       setTxt('movCanMes',   m.canceladosMes);
+      setTxt('movDesHoje',   m.desistenciaHoje);      setTxt('movDesMes',   m.desistenciaMes);
+      setTxt('movTraHoje',   m.trancadosHoje);        setTxt('movTraMes',   m.trancadosMes);
+
+      const sH = (m.matriculadosHoje||0)+(m.rematriculadosHoje||0)-(m.canceladosHoje||0)-(m.desistenciaHoje||0);
+      const sM = (m.matriculadosMes||0)+(m.rematriculadosMes||0)-(m.canceladosMes||0)-(m.desistenciaMes||0);
+      setTxt('movSaldoHoje', (sH > 0 ? '+' : '') + sH);
+      setTxt('movSaldoMes',  (sM > 0 ? '+' : '') + sM);
+    } else {
+      renderMockData();
+      showSyncBanner('PACTO indisponível — execute o sync no browser PACTO', 'yellow');
+    }
+
+    if (checkins.status === 'fulfilled' && Array.isArray(checkins.value)) {
+      renderCheckins(checkins.value);
+    } else if (checkins.status === 'fulfilled') {
+      renderCheckins(checkins.value?.items || checkins.value?.content || []);
+    }
+
+    document.getElementById('lastUpdate').textContent =
+      'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
+
+    await checkStatus();
+  } catch (e) {
+    console.error('[DASH]', e);
+    renderMockData();
+    toast('Erro ao carregar dados: ' + e.message, 'error');
+  }
+}
+
+// Formata moeda (0 → '—', 1500 → 'R$ 1,5k', 15000 → 'R$ 15k')
+function fmtMoeda(v) {
+  if (!v) return '—';
+  if (v >= 1000) return `R$ ${(v/1000).toFixed(v >= 10000 ? 0 : 1)}k`;
+  return `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+}
+
+function setKpi(id, value, color) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value ?? '—';
+}
+
+function setTxt(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val ?? '—';
+}
+
+// Bookmarklet — roda no browser logado no PACTO (ui.pactosolucoes.com.br)
+// Usa o apiToken do localStorage do PACTO para chamar o sintetico com auth real
+const BOOKMARKLET = `javascript:(async function(){
+const S='http://localhost:3001';
+const token=localStorage.getItem('apiToken')||localStorage.getItem('token')||localStorage.getItem('access_token');
+if(!token){alert('❌ Faça login no PACTO antes de clicar aqui\\n\\nAbra o PACTO (ui.pactosolucoes.com.br), faça login e tente novamente.');return;}
+const u=new URL(window.location.href),p=u.searchParams;
+const emp=p.get('empresa')||p.get('codEmpresa')||localStorage.getItem('empresa')||'1';
+const uni=p.get('unidade')||p.get('codUnidade')||localStorage.getItem('unidade')||'1';
+const h=new Date().toISOString().split('T')[0],m=h.slice(0,7)+'-01';
+const hd={'Authorization':'Bearer '+token,'Content-Type':'application/json','empresaId':emp,'unidadeId':uni};
+async function p_f(url){try{const r=await fetch(url,{headers:hd});if(!r.ok){console.warn('[SYNC] '+url+' retornou '+r.status);return null;}return r.json().catch(()=>null)}catch(e){console.warn('[SYNC] fetch falhou:',e.message);return null}}
+const BASE='https://app.pactosolucoes.com.br/sintetico/prest';
+console.log('[24H SYNC] Iniciando sync... emp='+emp+' uni='+uni);
+const[mov,leads,fin,inadRaw]=await Promise.allSettled([
+  p_f(BASE+'/movimentacao-contratos?empresa='+emp+'&unidade='+uni+'&dtIni='+m+'&dtFim='+h),
+  p_f('https://personagem.ms.pactosolucoes.com.br/crm/leads?empresa='+emp+'&unidade='+uni+'&situacao=ABERTO&size=1'),
+  p_f(BASE+'/financeiro?empresa='+emp+'&unidade='+uni+'&mes='+h.slice(0,7)),
+  p_f(BASE+'/clientes/inadimplentes?empresa='+emp+'&unidade='+uni+'&page=0&size=500')
+]);
+const g=r=>r.status==='fulfilled'?r.value:null;
+const md=g(mov);const ld=g(leads);const fd=g(fin);const ir=g(inadRaw);
+console.log('[24H SYNC] Dados recebidos:', JSON.stringify({mov:!!md,leads:!!ld,fin:!!fd,inadimplentes:!!ir}));
+if(md) console.log('[24H SYNC] movimentacao campos:', Object.keys(md));
+if(ir) console.log('[24H SYNC] inadimplentes raw:', JSON.stringify(ir).slice(0,200));
+
+const det = {
+  matriculadosHoje: md?.matriculadosHoje??md?.matriculado??0,
+  matriculadosMes:  md?.matriculadosMes??md?.matriculadoAteHoje??md?.novasMatriculas??0,
+  rematriculadosHoje: md?.rematriculadosHoje??0,
+  rematriculadosMes:  md?.rematriculadosMes??md?.renovacoes??0,
+  canceladosHoje:   md?.canceladosHoje??md?.cancelado??0,
+  canceladosMes:    md?.canceladosMes??md?.canceladoAteHoje??md?.cancelamentos??0,
+  desistenciaHoje:  md?.desistenciaHoje??0,
+  desistenciaMes:   md?.desistenciaMes??md?.desistencias??0,
+  trancadosHoje:    md?.trancadosHoje??0,
+  trancadosMes:     md?.trancadosMes??md?.trancados??0
+};
+
+const ativos=md?.contratosAtivos??md?.ativos??md?.totalAtivos??md?.ativo??0;
+const agreg=md?.clientesAgregadores??md?.agregadores??md?.dependentes??0;
+const venc=md?.contratosVencidos??md?.vencidos??md?.contratoVencido??0;
+const inadimplRawList=ir?.content?.clientes||ir?.clientes||ir?.items||(Array.isArray(ir)?ir:[]);
+const inadimplentes_lista=inadimplRawList.map(c=>({nome:c.nome||c.nomeCliente||'',matricula:String(c.matricula||c.codigoCliente||c.id||''),telefone:Array.isArray(c.telefones)?(c.telefones[0]?.numero||c.telefones[0]||''):(c.telefone||''),email:Array.isArray(c.emails)?(c.emails[0]||''):(c.email||''),situacao:'INADIMPLENTE'})).filter(c=>c.nome);
+const inadimpl=inadimplentes_lista.length||md?.inadimplentes??md?.totalInadimplentes??md?.inadimplente??0;
+const renov=md?.renovacoes30d??md?.renovacoesMes??md?.renovacoes??0;
+const checkins=md?.checkinsHoje??md?.acessosHoje??0;
+const leadsTotal=ld?.totalElements??ld?.total??ld?.totalLeads??0;
+const receita=fd?.receitaMes??fd?.totalReceita??fd?.receita??fd?.receitaBruta??0;
+const aReceber=fd?.aReceber??fd?.totalAReceber??0;
+
+const stats={
+  ativos,
+  agregadores:agreg,
+  vencidos:venc,
+  totalAlunos:ativos+agreg+venc,
+  cancelamentos:det.canceladosMes + det.desistenciaMes,
+  novasVendas:det.matriculadosMes + det.rematriculadosMes,
+  inadimplentes:inadimpl,
+  leadsAtivos:leadsTotal,
+  renovacoes30d:renov,
+  checkinsHoje:checkins,
+  receita:receita,
+  aReceber:aReceber,
+  funil:{lead:Math.floor(leadsTotal*0.4),contato:Math.floor(leadsTotal*0.3),visita:Math.floor(leadsTotal*0.2),proposta:Math.floor(leadsTotal*0.1),fechado:det.matriculadosMes+det.rematriculadosMes},
+  leadsSemContato:Math.floor(leadsTotal*0.15),
+  _syncedAt:new Date().toISOString()
+};
+console.log('[24H SYNC] Stats calculados:', JSON.stringify(stats));
+try{
+  const payload={stats,_raw:{movimentacao:{table:det,...(md||{})},leads:ld,financeiro:fd}};
+  if(inadimplentes_lista.length>0)payload.inadimplentes=inadimplentes_lista;
+  const r=await fetch(S+'/api/dashboard/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const j=await r.json();
+  const resumo='Ativos:'+ativos+' | Agreg:'+agreg+' | Venc:'+venc+'\\nNovas:'+det.matriculadosMes+' | Cancel:'+det.canceladosMes+'\\nLeads:'+leadsTotal+' | Receita: R$'+receita+'\\nInadimplentes (lista): '+inadimplentes_lista.length;
+  alert('✅ 24H NORTE sincronizado!\\n\\n'+resumo+'\\n\\nRecarregue o dashboard para ver os dados.');
+}catch(e){alert('❌ Erro ao sincronizar\\n\\nCertifique-se de que o servidor está rodando em localhost:3001\\n\\nDetalhes: '+e.message);}
+})()`.replace(/\n/g,'');
+
+function mostrarBookmarklet() {
+  const existing = document.getElementById('bookmarkletModal');
+  if (existing) { existing.remove(); return; }
+
+  const modal = document.createElement('div');
+  modal.id = 'bookmarkletModal';
+  modal.style.cssText = `
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:#0D1730;border:1px solid rgba(147,197,253,0.2);border-radius:16px;
+    padding:28px;z-index:1000;width:520px;max-width:95vw;
+    box-shadow:0 20px 60px rgba(0,0,0,0.6);backdrop-filter:blur(20px);
+  `;
+  modal.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <i data-lucide="link" style="width:16px;height:16px;color:var(--color-accent-light)"></i>
+        Bookmarklet de Sincronização
+      </div>
+      <button onclick="document.getElementById('bookmarkletModal').remove()" style="background:none;border:none;color:var(--color-muted);cursor:pointer;font-size:18px;line-height:1">×</button>
+    </div>
+    <div style="font-size:13px;color:var(--color-muted);margin-bottom:16px;line-height:1.6">
+      Arraste o botão abaixo para a <strong style="color:var(--color-text)">barra de favoritos</strong> do navegador.
+      Depois, abra o PACTO (<code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px">app.pactosolucoes.com.br</code>), faça login e clique no favorito para sincronizar movimentações e dados financeiros.
+    </div>
+    <div style="display:flex;justify-content:center;margin-bottom:20px">
+      <a href="${BOOKMARKLET}" style="
+        display:inline-flex;align-items:center;gap:8px;
+        padding:12px 24px;background:var(--color-accent);color:white;
+        border-radius:10px;font-weight:700;font-size:14px;text-decoration:none;
+        box-shadow:0 0 20px rgba(37,99,235,0.4);cursor:grab;
+      " draggable="true" onclick="event.preventDefault();alert('Arraste para a barra de favoritos!')">
+        ⚡ Sync 24H NORTE
+      </a>
+    </div>
+    <div style="font-size:11px;color:var(--color-muted);background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px;line-height:1.5">
+      <strong style="color:var(--color-text-secondary)">Como usar:</strong><br>
+      1. Arraste o botão azul para a barra de favoritos do Chrome/Edge<br>
+      2. Abra <strong>app.pactosolucoes.com.br</strong> e faça login<br>
+      3. Clique no favorito "Sync 24H NORTE"<br>
+      4. Os dados são enviados automaticamente para este dashboard
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  // Fechar ao clicar fora
+  setTimeout(() => {
+    document.addEventListener('click', function closeModal(e) {
+      if (!modal.contains(e.target) && e.target.id !== 'btnBookmarklet') {
+        modal.remove();
+        document.removeEventListener('click', closeModal);
+      }
+    });
+  }, 100);
+}
+
+function mostrarConfiguracoes() {
+  const existing = document.getElementById('configModal');
+  if (existing) { existing.remove(); return; }
+
+  const modal = document.createElement('div');
+  modal.id = 'configModal';
+  modal.style.cssText = `
+    position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);
+    display:flex;align-items:center;justify-content:center;z-index:2000;backdrop-filter:blur(4px);
+  `;
+  modal.innerHTML = `
+    <div style="background:#0D1730;border:1px solid rgba(147,197,253,0.2);border-radius:16px;
+      padding:28px;width:460px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          Configurações — Login PACTO
+        </div>
+        <button onclick="document.getElementById('configModal').remove()" style="background:none;border:none;color:#6B7280;cursor:pointer;font-size:20px;line-height:1">×</button>
+      </div>
+
+      <div style="font-size:12px;color:#6B7280;margin-bottom:18px;line-height:1.6;background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.2);border-radius:8px;padding:10px 12px">
+        <strong style="color:#93C5FD">Solução definitiva:</strong> Com o login do PACTO configurado, o sistema busca automaticamente a lista de inadimplentes, movimentações e dados financeiros — sem precisar de nenhuma ação manual.
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:#9CA3AF;display:block;margin-bottom:6px">Usuário (e-mail do PACTO)</label>
+        <input id="cfgPactoUser" type="email" placeholder="seu@email.com"
+          style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;
+          padding:10px 12px;color:#F9FAFB;font-size:13px;box-sizing:border-box;outline:none" />
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;color:#9CA3AF;display:block;margin-bottom:6px">Senha</label>
+        <input id="cfgPactoPass" type="password" placeholder="••••••••"
+          style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;
+          padding:10px 12px;color:#F9FAFB;font-size:13px;box-sizing:border-box;outline:none" />
+      </div>
+      <div id="cfgMsg" style="font-size:12px;margin-bottom:14px;display:none"></div>
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('configModal').remove()" class="btn btn-secondary" style="flex:1;justify-content:center">Cancelar</button>
+        <button onclick="salvarCredenciaisPacto()" class="btn btn-primary" id="cfgSaveBtn" style="flex:2;justify-content:center">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Salvar e Sincronizar
+        </button>
+      </div>
+      <div style="margin-top:14px;font-size:11px;color:#6B7280;text-align:center">
+        As credenciais são salvas localmente no servidor (arquivo .env). Nunca são enviadas para terceiros.
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.getElementById('cfgPactoUser').focus();
+}
+
+async function salvarCredenciaisPacto() {
+  const user = document.getElementById('cfgPactoUser').value.trim();
+  const pass = document.getElementById('cfgPactoPass').value;
+  const msg  = document.getElementById('cfgMsg');
+  const btn  = document.getElementById('cfgSaveBtn');
+
+  if (!user || !pass) {
+    msg.style.display = 'block';
+    msg.style.color = '#F87171';
+    msg.textContent = 'Preencha usuário e senha.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+  msg.style.display = 'none';
+
+  try {
+    const r = await fetch('/api/config/pacto-credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pactoUser: user, pactoPass: pass }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.style.display = 'block';
+      msg.style.color = '#34D399';
+      msg.textContent = '✓ Credenciais salvas! Sincronizando dados — aguarde 10 segundos e recarregue.';
+      btn.textContent = 'Salvo!';
+      setTimeout(() => {
+        document.getElementById('configModal')?.remove();
+        setTimeout(refreshDashboard, 5000);
+        setTimeout(loadInadimplentes, 8000);
+      }, 2000);
+    } else {
+      msg.style.display = 'block';
+      msg.style.color = '#F87171';
+      msg.textContent = 'Erro: ' + (d.error || 'Falha ao salvar');
+      btn.disabled = false;
+      btn.textContent = 'Salvar e Sincronizar';
+    }
+  } catch (e) {
+    msg.style.display = 'block';
+    msg.style.color = '#F87171';
+    msg.textContent = 'Erro de conexão: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = 'Salvar e Sincronizar';
+  }
+}
+
+function showSyncBanner(msg, type) {
+  let b = document.getElementById('syncBanner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'syncBanner';
+    b.style.cssText = 'padding:12px 24px;font-size:13px;display:flex;align-items:center;gap:12px;position:sticky;top:57px;z-index:99;flex-wrap:wrap;';
+    document.querySelector('main')?.prepend(b);
+  }
+  const colors = { yellow: 'var(--color-purple)', red: 'var(--color-orange)', green: 'var(--color-green)' };
+  const c = colors[type] || colors.yellow;
+  b.style.background = 'var(--color-surface)';
+  b.style.border = `0.5px solid var(--color-border)`;
+  b.style.borderLeft = `3px solid ${c}`;
+  b.innerHTML = `
+    <span style="color:${c};font-size:16px">⚠</span>
+    <span style="color:var(--color-text-primary);font-weight:500;flex:1">${msg}</span>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0">
+      <button onclick="forceSyncPacto(this)"
+         style="background:var(--color-green);color:#000;padding:6px 14px;border-radius:var(--radius-md);border:none;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;cursor:pointer;">
+        ↻ Sincronizar agora
+      </button>
+    </div>`;
+  b.style.display = 'flex';
+}
+
+function hideSyncBanner() {
+  const b = document.getElementById('syncBanner');
+  if (b) b.style.display = 'none';
+}
+
+async function checkStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const s = await r.json();
+    document.getElementById('statusPacto').className =
+      'dot ' + (s.pacto  ? '' : 'red');
+    document.getElementById('statusUazapi').className =
+      'dot ' + (s.uazapi ? '' : 'yellow');
+  } catch {
+    document.getElementById('statusPacto').className   = 'dot red';
+    document.getElementById('statusUazapi').className  = 'dot red';
+  }
+}
+
+function renderMockData() {
+  setKpi('kpiTotal', '—');
+  setKpi('kpiAgregadores', '—');
+  setKpi('kpiAtivos', '—');
+  setKpi('kpiVencidos', '—');
+  setKpi('kpiVendas', '—');
+  setKpi('kpiCancelados', '—');
+  setKpi('kpiSaldo', '—');
+  setKpi('kpiInadimplentes', '—');
+  setKpi('kpiLeads', '—');
+  setKpi('kpiRenovacoes', '—');
+  setKpi('kpiCheckins', '—');
+  setKpi('kpiReceita', '—');
+
+  renderFunil({ lead: 0, contato: 0, visita: 0, proposta: 0, fechado: 0 });
+  renderAlertas({ inadimplentes: 0, renovacoes30d: 0, leadsSemContato: 0 });
+}
+
+function renderFunil(data) {
+  const etapas = [
+    { id: 'lead', nome: 'Lead', cor: 'var(--color-text-primary)' },
+    { id: 'contato', nome: 'Contato', cor: 'var(--color-text-secondary)' },
+    { id: 'visita', nome: 'Visita', cor: 'var(--color-purple)' },
+    { id: 'proposta', nome: 'Proposta', cor: 'var(--color-orange)' },
+    { id: 'fechado', nome: 'Fechado ✅', cor: 'var(--color-green)' },
+  ];
+
+  const container = document.getElementById('funilContainer');
+  if (!container) return;
+
+  container.innerHTML = etapas.map((e, i) => `
+    <div class="funil-etapa">
+      <div class="funil-etapa-nome">${e.nome}</div>
+      <div class="funil-etapa-count" style="color:${e.cor}">${data[e.id] ?? 0}</div>
+      <div class="funil-etapa-sub">leads</div>
+    </div>
+    ${i < etapas.length - 1 ? '<div class="funil-arrow">→</div>' : ''}
+  `).join('');
+}
+
+function renderAlertas(data) {
+  const container = document.getElementById('alertasContainer');
+  const alertas = [];
+
+  const lucideMap = {
+    orange: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-orange);flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+    purple: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#8B5CF6;flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`,
+    blue:   `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-accent-light);flex-shrink:0"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.26 12a19.79 19.79 0 0 1-3-8.59A2 2 0 0 1 3.26 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>`,
+  };
+
+  if (data.inadimplentes > 0)
+    alertas.push({ iconSvg: lucideMap.orange, texto: `${data.inadimplentes} alunos com pagamento em atraso`, tipo: 'orange', acao: 'Ver Inadimplentes' });
+  if (data.renovacoes30d > 0)
+    alertas.push({ iconSvg: lucideMap.purple, texto: `${data.renovacoes30d} contratos vencendo nos próximos 30 dias`, tipo: 'purple', acao: 'Renovar Agora' });
+  if (data.leadsSemContato > 0)
+    alertas.push({ iconSvg: lucideMap.blue, texto: `${data.leadsSemContato} leads sem contato há mais de 3 dias`, tipo: 'blue', acao: 'Entrar em Contato' });
+
+  if (alertas.length === 0) {
+    container.innerHTML = '<div class="empty" style="color:var(--color-green)">Nenhum alerta no momento</div>';
+    return;
+  }
+
+  container.innerHTML = alertas.map(a => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:14px 16px;margin-bottom:8px;background:var(--color-surface);
+      border-radius:var(--radius-md);border:0.5px solid var(--color-border);border-left:2px solid var(--color-${a.tipo})">
+      <span style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px">${a.iconSvg}${a.texto}</span>
+      <button class="btn btn-secondary" style="font-size:11px;padding:6px 12px;flex-shrink:0">${a.acao}</button>
+    </div>
+  `).join('');
+}
+
+function renderCheckins(data) {
+  const container = document.getElementById('checkinsContainer');
+  if (!data || !data.length) {
+    container.innerHTML = '<div class="empty">Nenhum check-in registrado hoje.</div>';
+    return;
+  }
+  container.innerHTML = `
+    <table>
+      <thead><tr><th>Aluno</th><th>Matrícula</th><th>Horário</th><th>Acesso</th></tr></thead>
+      <tbody>
+        ${data.slice(0, 10).map(c => `
+          <tr>
+            <td>${c.nome || '—'}</td>
+            <td>${c.matricula || '—'}</td>
+            <td>${c.horario || '—'}</td>
+            <td><span class="badge ativo">Autorizado</span></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function loadAlunos() {
+  const body = document.getElementById('alunosBody');
+  body.innerHTML = '<tr><td colspan="7"><div class="loading"><div class="spinner"></div> Carregando alunos...</div></td></tr>';
+  try {
+    const r = await fetch('/api/alunos?page=0&size=100');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    alunosData = Array.isArray(data) ? data : (data.content || []);
+    renderAlunos(alunosData);
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty">Erro ao carregar alunos: ${e.message}</div></td></tr>`;
+  }
+}
+
+function fmtData(ts) {
+  if (!ts) return '—';
+  // timestamp em ms ou string ISO
+  const d = typeof ts === 'number' ? new Date(ts) : new Date(ts);
+  return isNaN(d) ? ts : d.toLocaleDateString('pt-BR');
+}
+
+function renderAlunos(alunos) {
+  const body = document.getElementById('alunosBody');
+  if (!alunos.length) {
+    body.innerHTML = '<tr><td colspan="7"><div class="empty">Nenhum aluno encontrado</div></td></tr>';
+    return;
+  }
+
+  // Mapa de situação → classe CSS
+  const sitClasse = {
+    ATIVO: 'ativo', INATIVO: 'cancelado', VISITANTE: 'lead',
+    DESISTENTE: 'cancelado', CANCELADO: 'cancelado', TRANCADO: 'trancado',
+  };
+
+  body.innerHTML = alunos.map(a => {
+    const sit    = (a.situacao || '').toUpperCase();
+    const classe = sitClasse[sit] || 'lead';
+    const tel    = (a.telefone || '').replace(/\D/g,'');
+    const nome   = (a.nome || '—').replace(/'/g, "\\'");
+    return `
+    <tr>
+      <td style="font-size:12px;color:var(--color-text-muted)">${a.matricula || a.codigoCliente || '—'}</td>
+      <td style="font-weight:500;color:var(--color-text-primary)">${a.nome || '—'}</td>
+      <td><span class="badge ${classe}">${a.situacao || '—'}</span></td>
+      <td style="color:var(--color-text-muted)">${a.categoria || a.tipoAcesso || '—'}</td>
+      <td style="color:var(--color-text-muted)">${fmtData(a.fimContrato) || (a.datamatricula ? 'Mat: ' + a.datamatricula : '—')}</td>
+      <td style="color:var(--color-text-muted)">${a.ultimoAcesso || fmtData(a.dataUltimaOperacao) || '—'}</td>
+      <td>
+        ${tel ? `<button class="btn btn-secondary" style="font-size:11px;padding:4px 8px" title="Enviar WhatsApp"
+          onclick="enviarWppAluno('${tel}','${nome}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>` : '—'}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filtrarAlunos() {
+  const q = document.getElementById('searchAlunos').value.toLowerCase();
+  const filtrado = alunosData.filter(a => (a.nome||'').toLowerCase().includes(q));
+  renderAlunos(filtrado);
+}
+
+// ═══════════════════════════════════════════════════════
+// WHATSAPP
+// ═══════════════════════════════════════════════════════
+
+const EXTRA_MAP = {
+  confirmacao_visita: ['data:Data da Visita:date', 'hora:Horário:time'],
+  lembrete_visita:    ['hora:Horário:time'],
+  lembrete_dia:       ['hora:Horário:time'],
+  follow_up_d1:       ['plano:Plano de Interesse:text'],
+  boas_vindas:        ['plano:Plano Contratado:text'],
+  lembrete_renovacao: ['vencimento:Data de Vencimento:date'],
+  reativacao:         ['dias:Dias sem Treinar:number'],
+  cobranca_amigavel:  ['valor:Valor em Atraso (R$):text'],
+};
+
+let _lastTemplateTipo = null;
+
+function atualizarCamposExtras(tipo) {
+  // Só reconstrói os campos se o template mudou
+  if (tipo === _lastTemplateTipo) return;
+  _lastTemplateTipo = tipo;
+
+  const extras = document.getElementById('extraFields');
+  const fields = EXTRA_MAP[tipo] || [];
+  extras.innerHTML = fields.map(f => {
+    const [id, label, inputType = 'text'] = f.split(':');
+    return `
+      <div class="form-group" style="margin-bottom:10px">
+        <label class="form-label">${label}</label>
+        <input type="${inputType}" class="form-control" id="extra_${id}"
+          placeholder="${label}" oninput="atualizarPreview()" onchange="atualizarPreview()" />
+      </div>
+    `;
+  }).join('');
+}
+
+function atualizarPreview() {
+  const tipo  = document.getElementById('msgTemplate').value;
+  const nome  = (document.getElementById('msgNome').value || 'João').trim();
+  const custom = document.getElementById('msgCustom').value;
+  const preview = document.getElementById('wppPreview');
+  const fields = EXTRA_MAP[tipo] || [];
+
+  let texto = custom;
+  if (!texto && tipo && TEMPLATES[tipo]) {
+    const params = {};
+    fields.forEach(f => {
+      const [id] = f.split(':');
+      const el = document.getElementById(`extra_${id}`);
+      params[id] = el ? el.value : '';
+    });
+    texto = TEMPLATES[tipo](nome, params);
+  }
+
+  if (texto) {
+    preview.innerHTML = texto
+      .replace(/\*(.*?)\*/g, '<b>$1</b>')
+      .replace(/\n/g, '<br>');
+  } else {
+    preview.textContent = 'Selecione um template para ver o preview...';
+  }
+}
+
+function previewMensagem() {
+  const tipo = document.getElementById('msgTemplate').value;
+  atualizarCamposExtras(tipo);
+  atualizarPreview();
+}
+
+// ── Imagem individual ──────────────────────────────────────────────────────
+function msgPreviewImagem(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('msgImagemPreview').src = e.target.result;
+    document.getElementById('msgImagemPreview').style.display = 'block';
+    document.getElementById('msgImagemNome').textContent = file.name;
+    document.getElementById('msgImagemRemover').style.display = '';
+  };
+  reader.readAsDataURL(file);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function msgRemoverImagem() {
+  document.getElementById('msgImagemInput').value = '';
+  document.getElementById('msgImagemPreview').style.display = 'none';
+  document.getElementById('msgImagemNome').textContent = 'Nenhuma imagem';
+  document.getElementById('msgImagemRemover').style.display = 'none';
+}
+
+async function enviarMensagem() {
+  const tipo = document.getElementById('msgTemplate').value;
+  const nome = (document.getElementById('msgNome').value || '').trim();
+  const telefone = document.getElementById('msgTelefone').value;
+  const custom = document.getElementById('msgCustom').value;
+  const imgInput = document.getElementById('msgImagemInput');
+  const temImagem = imgInput?.files?.length > 0;
+
+  if (!telefone) { toast('Informe o telefone', 'error'); return; }
+
+  const params = {};
+  document.querySelectorAll('[id^="extra_"]').forEach(el => {
+    params[el.id.replace('extra_','')] = el.value;
+  });
+
+  let texto = custom;
+  if (!texto && tipo && TEMPLATES[tipo]) {
+    texto = TEMPLATES[tipo](nome || 'Você', params);
+  }
+
+  // Imagem: obrigatório ter legenda OU pode enviar só imagem (caption vazio)
+  if (!texto && !temImagem) { toast('Escreva uma mensagem ou escolha um template', 'error'); return; }
+
+  try {
+    let imagemUrl = null;
+
+    // Se tem imagem, faz upload primeiro
+    if (temImagem) {
+      const fd = new FormData();
+      fd.append('imagem', imgInput.files[0]);
+      const ru = await fetch('/api/whatsapp/upload-image', { method: 'POST', body: fd });
+      const du = await ru.json();
+      if (!du.url) throw new Error('Falha no upload da imagem');
+      imagemUrl = du.url;
+    }
+
+    const endpoint = imagemUrl ? '/api/whatsapp/send-image' : '/api/whatsapp/send';
+    const body = imagemUrl
+      ? { telefone, imagemUrl, caption: texto || '', nome }
+      : { telefone, texto, nome };
+
+    const r = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (data.success) {
+      toast(`${imagemUrl ? 'Imagem enviada' : 'Mensagem enviada'} para ${nome || telefone}! ✅`, 'success');
+      enviosHistorico.unshift({ nome: nome||telefone, telefone, texto: texto||(imagemUrl?'[Imagem]':''), enviadoEm: new Date() });
+      renderHistorico();
+      msgRemoverImagem();
+    } else {
+      toast(`Erro: ${data.error || 'Falha no envio'}`, 'error');
+    }
+  } catch (e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+
+function renderHistorico() {
+  const container = document.getElementById('historicoEnvios');
+  if (!enviosHistorico.length) {
+    container.innerHTML = '<div class="empty">Nenhuma mensagem enviada nesta sessão.</div>';
+    return;
+  }
+  container.innerHTML = `
+    <table>
+      <thead><tr><th>Nome</th><th>Telefone</th><th>Mensagem</th><th>Enviado em</th></tr></thead>
+      <tbody>
+        ${enviosHistorico.map(e => `
+          <tr>
+            <td>${e.nome}</td>
+            <td>${e.telefone}</td>
+            <td style="max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              ${e.texto.substring(0,60)}...
+            </td>
+            <td>${e.enviadoEm.toLocaleTimeString('pt-BR')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function enviarWppAluno(telefone, nome) {
+  switchTab('whatsapp');
+  document.getElementById('msgTelefone').value = telefone;
+  document.getElementById('msgNome').value = nome;
+}
+
+// ═══════════════════════════════════════════════════════
+// OPORTUNIDADES — KANBAN
+// ═══════════════════════════════════════════════════════
+
+let opData = []; // cache local
+
+const ETAPA_CONFIG = {
+  LEAD:     { label: 'Lead',     color: '#6366f1', icon: 'user' },
+  CONTATO:  { label: 'Contato',  color: '#3b82f6', icon: 'phone' },
+  VISITA:   { label: 'Visita',   color: '#f59e0b', icon: 'map-pin' },
+  PROPOSTA: { label: 'Proposta', color: '#8b5cf6', icon: 'file-text' },
+  FECHADO:  { label: 'Fechado',  color: '#22c55e', icon: 'check-circle' },
+  PERDIDO:  { label: 'Perdido',  color: '#ef4444', icon: 'x-circle' },
+};
+
+const PROX_ETAPA = { LEAD: 'CONTATO', CONTATO: 'VISITA', VISITA: 'PROPOSTA', PROPOSTA: 'FECHADO' };
+const CAD_POR_ETAPA = { LEAD: 'lead_novo', CONTATO: 'lead_novo', VISITA: 'visita_sem_fechamento', PROPOSTA: 'visita_sem_fechamento', FECHADO: null };
+
+async function loadOportunidades() {
+  const board = document.getElementById('kanbanBoard');
+  if (!board) return;
+  try {
+    const etapa  = document.getElementById('filtroEtapaOp')?.value || '';
+    const dias   = document.getElementById('filtroPeriodoOp')?.value || '';
+    const params = new URLSearchParams();
+    if (etapa) params.set('etapa', etapa);
+    if (dias) {
+      const desde = new Date(Date.now() - parseInt(dias) * 86400000).toISOString();
+      params.set('desde', desde);
+    }
+    const qs = params.toString();
+    const r = await fetch('/api/oportunidades' + (qs ? '?' + qs : ''));
+    opData = await r.json();
+    filtrarKanban();
+  } catch (e) {
+    board.innerHTML = `<div class="empty">Erro ao carregar oportunidades: ${e.message}</div>`;
+  }
+}
+
+function filtrarKanban() {
+  const q = (document.getElementById('searchOp')?.value || '').toLowerCase();
+  const filtrado = q ? opData.filter(o => o.nome.toLowerCase().includes(q) || (o.telefone||'').includes(q)) : opData;
+  renderKanban(filtrado);
+}
+
+function renderKanban(ops) {
+  const board = document.getElementById('kanbanBoard');
+  if (!board) return;
+
+  const grupos = {};
+  for (const e of Object.keys(ETAPA_CONFIG)) grupos[e] = [];
+  for (const op of ops) (grupos[op.etapa] || (grupos.LEAD)).push(op);
+
+  board.innerHTML = Object.entries(ETAPA_CONFIG).map(([etapa, cfg]) => {
+    const cards = grupos[etapa] || [];
+    const cardsHtml = cards.length === 0
+      ? `<div style="padding:20px;text-align:center;color:var(--color-text-muted);font-size:12px">
+          ${etapa === 'LEAD' ? '<div style="margin-bottom:8px">Clique em<br><strong style="color:var(--color-text-secondary)">+ Nova Oportunidade</strong><br>ou use<br><strong style="color:var(--color-text-secondary)">Importar Inativos</strong></div>' : 'Vazio'}
+        </div>`
+      : cards.map(op => opCard(op)).join('');
+
+    return `
+      <div class="kanban-col" style="border-top:3px solid ${cfg.color}">
+        <div class="kanban-col-header">
+          <span class="kanban-col-title" style="color:${cfg.color}"><i data-lucide="${cfg.icon}" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>${cfg.label}</span>
+          <span class="kanban-col-count">${cards.length}</span>
+        </div>
+        <div class="kanban-cards kanban-drop-zone" data-etapa="${etapa}"
+          ondragover="kanbanDragOver(event)" ondrop="kanbanDrop(event)" ondragleave="kanbanDragLeave(event)">
+          ${cardsHtml}
+        </div>
+      </div>`;
+  }).join('');
+
+  // Atualizar funil no dashboard
+  renderFunil({
+    lead:     grupos.LEAD.length,
+    contato:  grupos.CONTATO.length,
+    visita:   grupos.VISITA.length,
+    proposta: grupos.PROPOSTA.length,
+    fechado:  grupos.FECHADO.length,
+  });
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function diasNaEtapa(op) {
+  const ref = op.atualizadoEm || op.criadoEm;
+  if (!ref) return 0;
+  return Math.floor((Date.now() - new Date(ref)) / 86400000);
+}
+
+function opCard(op) {
+  const dias = diasNaEtapa(op);
+  const urgente = dias >= 3 && op.etapa !== 'FECHADO' && op.etapa !== 'PERDIDO';
+  const prox = PROX_ETAPA[op.etapa];
+  const proxCfg = prox ? ETAPA_CONFIG[prox] : null;
+  const tel = op.telefone || '';
+  const nomeEsc = (op.nome||'').replace(/'/g, "\\'");
+
+  return `
+    <div class="op-card" draggable="true" ondragstart="kanbanDragStart(event,'${op.id}')" ondragend="kanbanDragEnd(event)" onclick="abrirDetalheOp('${op.id}')"  style="cursor:grab">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="op-card-nome">${op.nome}</div>
+        <span class="op-dias ${urgente ? 'urgente' : ''}">${dias}d</span>
+      </div>
+      <div class="op-card-info">
+        ${tel ? tel.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : ''}
+        ${op.planoInteresse ? `<br>${op.planoInteresse}` : ''}
+        ${op.cadenciaAtiva ? `<br><span style="color:#a855f7;font-size:10px">⏱ ${op.cadenciaAtiva.replace(/_/g,' ')}</span>` : ''}
+      </div>
+      <div class="op-card-actions" onclick="event.stopPropagation()">
+        ${tel ? `<button class="op-card-btn green" title="Enviar WhatsApp" onclick="wppOportunidade('${op.id}','${tel}','${nomeEsc}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>` : ''}
+        <button class="op-card-btn purple" title="Iniciar Cadência" onclick="cadenciaOportunidade('${op.id}','${nomeEsc}','${tel}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
+        ${proxCfg ? `<button class="op-card-btn" title="Mover para ${proxCfg.label}" onclick="moverEtapa('${op.id}','${prox}')" style="color:${proxCfg.color}">→ ${proxCfg.label}</button>` : ''}
+        ${op.etapa !== 'PERDIDO' && op.etapa !== 'FECHADO' ? `<button class="op-card-btn" title="Marcar como perdido" onclick="moverEtapa('${op.id}','PERDIDO')" style="color:var(--color-orange)">✗</button>` : ''}
+      </div>
+    </div>`;
+}
+
+async function moverEtapa(id, novaEtapa) {
+  try {
+    await fetch(`/api/oportunidades/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ etapa: novaEtapa }),
+    });
+    const cfg = ETAPA_CONFIG[novaEtapa];
+    toast(`Movido para ${cfg?.label || novaEtapa}`, 'success');
+    await loadOportunidades();
+  } catch (e) { toast('Erro: ' + e.message, 'error'); }
+}
+
+// ─── DRAG AND DROP KANBAN ──────────────────────────────────────────────────
+
+let _dragOpId = null;
+
+function kanbanDragStart(e, id) {
+  _dragOpId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.style.opacity = '0.4';
+}
+
+function kanbanDragEnd(e) {
+  e.currentTarget.style.opacity = '';
+  document.querySelectorAll('.kanban-drop-zone').forEach(z => z.classList.remove('drag-over'));
+}
+
+function kanbanDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+function kanbanDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+}
+
+async function kanbanDrop(e) {
+  e.preventDefault();
+  const zone = e.currentTarget;
+  zone.classList.remove('drag-over');
+  const novaEtapa = zone.dataset.etapa;
+  if (!_dragOpId || !novaEtapa) return;
+  const op = opData.find(o => o.id === _dragOpId);
+  if (!op || op.etapa === novaEtapa) return;
+  _dragOpId = null;
+  await moverEtapa(op.id, novaEtapa);
+}
+
+function wppOportunidade(id, telefone, nome) {
+  // Pré-preenche WhatsApp e registra no histórico
+  switchTab('whatsapp');
+  document.getElementById('msgTelefone').value = telefone;
+  document.getElementById('msgNome').value = nome;
+  // Selecionar template baseado na etapa da oportunidade
+  const op = opData.find(o => o.id === id);
+  if (op) {
+    const templateMap = {
+      LEAD: 'follow_up_d1', CONTATO: 'follow_up_d3',
+      VISITA: 'confirmacao_visita', PROPOSTA: 'pos_atendimento',
+    };
+    const sel = document.getElementById('msgTemplate');
+    if (sel && templateMap[op.etapa]) sel.value = templateMap[op.etapa];
+    // Registrar no histórico
+    fetch(`/api/oportunidades/${id}/historico`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo: 'whatsapp', texto: `Aberto envio WhatsApp (etapa: ${op.etapa})` }),
+    }).catch(() => {});
+  }
+}
+
+function cadenciaOportunidade(id, nome, telefone) {
+  const op = opData.find(o => o.id === id);
+  const tipoPadrao = CAD_POR_ETAPA[op?.etapa] || 'lead_novo';
+
+  // Abre aba cadências pré-preenchida
+  switchTab('cadencias');
+  setTimeout(() => {
+    const nomeFld = document.getElementById('cadNome');
+    const telFld  = document.getElementById('cadTelefone');
+    const tipFld  = document.getElementById('cadTipo');
+    const opFld   = document.getElementById('cadOportunidadeId');
+    if (nomeFld) nomeFld.value = nome;
+    if (telFld)  telFld.value = telefone;
+    if (tipFld)  tipFld.value = tipoPadrao;
+    if (opFld)   opFld.value = id;
+  }, 100);
+}
+
+// ── Modal: Detalhe / Edição da Oportunidade ────────────────
+async function abrirDetalheOp(id) {
+  const op = opData.find(o => o.id === id);
+  if (!op) return;
+  const cfg = ETAPA_CONFIG[op.etapa] || {};
+  const etapaOpts = Object.entries(ETAPA_CONFIG).map(([e,c]) =>
+    `<option value="${e}" ${e === op.etapa ? 'selected' : ''}>${c.emoji} ${c.label}</option>`
+  ).join('');
+  const histHtml = (op.historico || []).slice().reverse().map(h => `
+    <div class="hist-item">
+      <span class="hist-data">${new Date(h.data).toLocaleString('pt-BR')}</span><br>
+      ${h.texto}
+    </div>`).join('');
+
+  const existing = document.getElementById('modalDetalheOp');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'modalDetalheOp';
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" style="width:520px" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div class="modal-title" style="margin:0">${cfg.emoji || '🎯'} ${op.nome}</div>
+        <span style="color:${cfg.color};font-size:12px;font-weight:600">${cfg.label || op.etapa}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Nome</label>
+          <input type="text" class="form-control" id="opEditNome" value="${op.nome}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telefone</label>
+          <input type="text" class="form-control" id="opEditTel" value="${op.telefone}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Plano Interesse</label>
+          <input type="text" class="form-control" id="opEditPlano" value="${op.planoInteresse||''}" placeholder="Ex: Mensal" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Etapa</label>
+          <select class="form-control" id="opEditEtapa">${etapaOpts}</select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observação</label>
+        <textarea class="form-control" id="opEditObs" rows="2" style="resize:vertical">${op.observacao||''}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Adicionar Nota</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" class="form-control" id="opNota" placeholder="Registrar atividade..." />
+          <button class="btn btn-secondary" style="white-space:nowrap" onclick="adicionarNota('${id}')">+ Nota</button>
+        </div>
+      </div>
+      <div class="modal-hist">${histHtml || '<div style="text-align:center;color:var(--color-text-muted);font-size:12px">Sem histórico</div>'}</div>
+      <div class="modal-footer" style="margin-top:16px">
+        <button class="btn btn-secondary" style="color:var(--color-orange)" onclick="excluirOp('${id}')">🗑 Excluir</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('modalDetalheOp').remove()">Fechar</button>
+        <button class="btn btn-primary" onclick="salvarEdicaoOp('${id}')">💾 Salvar</button>
+      </div>
+    </div>`;
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+}
+
+async function salvarEdicaoOp(id) {
+  const body = {
+    nome:          document.getElementById('opEditNome').value.trim(),
+    telefone:      document.getElementById('opEditTel').value.trim(),
+    planoInteresse:document.getElementById('opEditPlano').value.trim(),
+    etapa:         document.getElementById('opEditEtapa').value,
+    observacao:    document.getElementById('opEditObs').value.trim(),
+  };
+  await fetch(`/api/oportunidades/${id}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  toast('Oportunidade atualizada', 'success');
+  document.getElementById('modalDetalheOp')?.remove();
+  loadOportunidades();
+}
+
+async function adicionarNota(id) {
+  const texto = document.getElementById('opNota').value.trim();
+  if (!texto) return;
+  await fetch(`/api/oportunidades/${id}/historico`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tipo: 'nota', texto }),
+  });
+  document.getElementById('opNota').value = '';
+  toast('Nota registrada', 'success');
+  await abrirDetalheOp(id);
+  await loadOportunidades();
+}
+
+async function excluirOp(id) {
+  if (!confirm('Excluir esta oportunidade?')) return;
+  await fetch(`/api/oportunidades/${id}`, { method: 'DELETE' });
+  document.getElementById('modalDetalheOp')?.remove();
+  toast('Oportunidade excluída', 'success');
+  loadOportunidades();
+}
+
+// ── Modal: Nova Oportunidade ────────────────────────────────
+function abrirModalNovaOp() {
+  const existing = document.getElementById('modalNovaOp');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'modalNovaOp';
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-title">🎯 Nova Oportunidade</div>
+      <div class="form-group">
+        <label class="form-label">Nome *</label>
+        <input type="text" class="form-control" id="novaOpNome" placeholder="Nome completo" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Telefone (com DDD) *</label>
+        <input type="text" class="form-control" id="novaOpTel" placeholder="11999999999" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Plano de Interesse</label>
+        <input type="text" class="form-control" id="novaOpPlano" placeholder="Ex: Mensal, Trimestral..." />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observação</label>
+        <input type="text" class="form-control" id="novaOpObs" placeholder="Como chegou até nós, interesse..." />
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="novaOpCad" checked />
+        <label for="novaOpCad" style="color:var(--color-text-secondary);font-size:13px;cursor:pointer">
+          Iniciar cadência lead_novo automaticamente
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('modalNovaOp').remove()">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarNovaOp()">▶ Criar Oportunidade</button>
+      </div>
+    </div>`;
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+  document.getElementById('novaOpNome').focus();
+}
+
+async function salvarNovaOp() {
+  const nome     = document.getElementById('novaOpNome').value.trim();
+  const telefone = document.getElementById('novaOpTel').value.trim();
+  const plano    = document.getElementById('novaOpPlano').value.trim();
+  const obs      = document.getElementById('novaOpObs').value.trim();
+  const iniciarCad = document.getElementById('novaOpCad').checked;
+
+  if (!nome || !telefone) { toast('Nome e telefone são obrigatórios', 'error'); return; }
+
+  const btn = document.querySelector('#modalNovaOp .btn-primary');
+  btn.textContent = '⏳ Criando...';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch('/api/oportunidades', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, telefone, planoInteresse: plano, observacao: obs }),
+    });
+    if (r.status === 409) {
+      const d = await r.json();
+      toast('Já existe uma oportunidade ativa para este telefone', 'error');
+      btn.textContent = '▶ Criar Oportunidade'; btn.disabled = false;
+      return;
+    }
+    const op = await r.json();
+    if (iniciarCad) {
+      await fetch('/api/cadencias/iniciar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, telefone, tipo: 'lead_novo', oportunidadeId: op.id }),
+      });
+    }
+    toast(`✅ "${nome}" criado${iniciarCad ? ' + cadência iniciada' : ''}`, 'success');
+    document.getElementById('modalNovaOp').remove();
+    loadOportunidades();
+  } catch (e) {
+    toast('Erro: ' + e.message, 'error');
+    btn.textContent = '▶ Criar Oportunidade'; btn.disabled = false;
+  }
+}
+
+// ── Compatibilidade legada ─────────────────────────────────
+function abrirModalLead() { abrirModalNovaOp(); }
+async function loadLeads() { await loadOportunidades(); }
+
+// ═══════════════════════════════════════════════════════
+// FINANCEIRO
+// ═══════════════════════════════════════════════════════
+
+async function loadFinanceiro() {
+  // KPIs principais
+  try {
+    const r = await fetch('/api/dashboard/financeiro');
+    const data = await r.json();
+    setKpi('finReceita',  fmtMoeda(data.receita));
+    setKpi('finAReceber', fmtMoeda(data.aReceber));
+    setKpi('finInad',     data.inadimplentes ?? '—');
+  } catch {
+    setKpi('finReceita',  fmtMoeda(dashData?.receita));
+    setKpi('finAReceber', fmtMoeda(dashData?.aReceber));
+    setKpi('finInad',     dashData?.inadimplentes ?? '—');
+  }
+
+  // Dados derivados dos alunos ativos
+  try {
+    const r2 = await fetch('/api/alunos?limit=2000');
+    const d2 = await r2.json();
+    const alunos = d2.items || d2 || [];
+
+    const hoje = new Date();
+    const ativos = dashData?.ativos || alunos.length || 874;
+    const inadN  = dashData?.inadimplentes || 0;
+    const receitaN = dashData?.receita || 0;
+
+    // Ticket médio
+    const ticket = receitaN && ativos ? receitaN / ativos : null;
+    setKpi('finTicket', ticket ? fmtMoeda(ticket) : '—');
+
+    // Taxa de inadimplência %
+    const taxaInad = inadN && ativos ? ((inadN / ativos) * 100).toFixed(1) + '%' : '—';
+    setKpi('finTaxaInad', taxaInad);
+
+    // Risco de churn: sem acesso há 14+ dias
+    const cutoff14 = new Date(hoje); cutoff14.setDate(cutoff14.getDate() - 14);
+    const emRisco = alunos.filter(a => {
+      if (!a.ultimoAcesso) return true; // nunca foi = risco
+      // ultimoAcesso vem em "DD/MM/YYYY HH:mm" ou "DD/MM/YYYY"
+      const partes = a.ultimoAcesso.split(/[\s\/]/);
+      if (partes.length >= 3) {
+        const dt = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
+        return dt < cutoff14;
+      }
+      return false;
+    });
+    setKpi('finRiscoChurn', emRisco.length);
+
+    // Gráfico de matrículas por mês (últimos 6 meses)
+    renderChartMatriculas(alunos);
+
+    // Tabela de alunos em risco
+    renderRiscoChurn(emRisco);
+
+  } catch(e) {
+    console.warn('[FIN] Erro ao carregar dados derivados:', e.message);
+    document.getElementById('finRiscoContainer').innerHTML =
+      '<div class="empty">Erro ao carregar dados</div>';
+  }
+}
+
+function renderChartMatriculas(alunos) {
+  const el = document.getElementById('finChartMatriculas');
+  if (!el) return;
+
+  // Agrupa por MM/YYYY dos últimos 6 meses
+  const hoje = new Date();
+  const meses = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    meses.push({
+      key: `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`,
+      label: d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}).replace('. ','/'). replace('.',''),
+      count: 0
+    });
+  }
+
+  alunos.forEach(a => {
+    if (!a.datamatricula) return;
+    // datamatricula = "DD/MM/YYYY"
+    const parts = a.datamatricula.split('/');
+    if (parts.length < 3) return;
+    const key = `${parts[1]}/${parts[2]}`;
+    const m = meses.find(m => m.key === key);
+    if (m) m.count++;
+  });
+
+  const max = Math.max(...meses.map(m => m.count), 1);
+  el.innerHTML = `
+    <div style="display:flex;align-items:flex-end;gap:10px;height:120px;padding:0 4px">
+      ${meses.map(m => {
+        const pct = Math.round((m.count / max) * 100);
+        const isAtual = m.key === `${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`;
+        const cor = isAtual ? '#4ade80' : '#6366f1';
+        return `
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%">
+            <div style="font-size:11px;font-weight:600;color:${cor}">${m.count || '—'}</div>
+            <div style="flex:1;width:100%;display:flex;align-items:flex-end">
+              <div style="width:100%;height:${Math.max(pct,2)}%;background:${cor};border-radius:4px 4px 0 0;opacity:${isAtual?'1':'0.65'};transition:height .3s"></div>
+            </div>
+            <div style="font-size:10px;color:var(--color-text-muted);text-align:center;line-height:1.2">${m.label}</div>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderRiscoChurn(emRisco) {
+  const container = document.getElementById('finRiscoContainer');
+  if (!container) return;
+
+  if (!emRisco.length) {
+    container.innerHTML = '<div class="empty">Nenhum aluno em risco no momento 🎉</div>';
+    return;
+  }
+
+  // Ordena por último acesso mais antigo (ou sem acesso)
+  const hoje = new Date();
+  const comDias = emRisco.map(a => {
+    let dias = 999;
+    if (a.ultimoAcesso) {
+      const parts = a.ultimoAcesso.split(/[\s\/]/);
+      if (parts.length >= 3) {
+        const dt = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        dias = Math.floor((hoje - dt) / 86400000);
+      }
+    }
+    return { ...a, diasSemAcesso: dias };
+  }).sort((a,b) => b.diasSemAcesso - a.diasSemAcesso).slice(0, 15);
+
+  container.innerHTML = `
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Nome</th><th>Matrícula</th><th>Último Acesso</th><th>Dias Parado</th><th>Ação</th></tr></thead>
+      <tbody>
+        ${comDias.map(a => {
+          const d = a.diasSemAcesso;
+          const cor = d >= 60 ? '#f87171' : d >= 30 ? '#fb923c' : '#facc15';
+          const tel = Array.isArray(a.telefones) ? (a.telefones[0]?.numero||'') : (a.telefone||'');
+          const nomeEsc = (a.nome||'').replace(/'/g,"\\'");
+          return `<tr>
+            <td style="font-weight:500">${a.nome||'—'}</td>
+            <td style="color:var(--color-text-muted)">${a.matricula||'—'}</td>
+            <td style="color:var(--color-text-muted)">${a.ultimoAcesso ? a.ultimoAcesso.split(' ')[0] : '—'}</td>
+            <td><span style="color:${cor};font-weight:700">${d >= 999 ? 'Nunca' : d+'d'}</span></td>
+            <td>${tel ? `<button class="btn btn-secondary" style="font-size:11px;padding:3px 8px" onclick="finContatarRisco('${nomeEsc}','${tel}')">
+              <i data-lucide="message-circle" style="width:11px;height:11px;vertical-align:-1px;margin-right:3px"></i>Contatar
+            </button>` : '—'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:var(--color-text-muted)">
+      Total em risco: <b style="color:#f87171">${emRisco.length}</b> alunos
+    </div>`;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function finContatarRisco(nome, telefone) {
+  switchTab('whatsapp');
+  setTimeout(() => {
+    const tEl = document.getElementById('msgTelefone');
+    const nEl = document.getElementById('msgNome');
+    const tpl = document.getElementById('msgTemplate');
+    if (tEl) tEl.value = telefone.replace(/^55/,'').replace(/\D/g,'');
+    if (nEl) nEl.value = nome;
+    if (tpl) { tpl.value = 'reativacao'; _lastTemplateTipo = null; previewMensagem(); }
+  }, 200);
+}
+
+// ── Lembrete de renovação individual (Financeiro tab) ──────────────────────
+async function enviarLembreteRenovacao(nome, telefone, vencimento) {
+  const data = vencimento ? new Date(vencimento).toLocaleDateString('pt-BR') : 'em breve';
+  const texto = `Olá, ${nome}! 😊 Passando para lembrar que seu plano vence em ${data}.\n\nRenove agora e continue treinando sem interrupções! Entre em contato conosco para mais informações. 💪`;
+  try {
+    const r = await fetch('/api/whatsapp/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telefone: telefone.replace(/\D/g,''), texto, nome }),
+    });
+    const d = await r.json();
+    toast(d.success ? `Lembrete enviado para ${nome}` : `Erro: ${d.error}`, d.success ? 'success' : 'error');
+  } catch (e) { toast('Erro ao enviar lembrete', 'error'); }
+}
+
+// ── Importar inadimplentes para o Funil CRM ────────────────────────────────
+async function importarInadimplentesParaFunil() {
+  if (!confirm('Isso criará um lead no Funil CRM para cada inadimplente (sem duplicatas) e iniciará cadência de cobrança. Confirmar?')) return;
+  try {
+    const r = await fetch('/api/oportunidades/importar-inadimplentes', { method: 'POST' });
+    const d = await r.json();
+    if (d.success) {
+      toast(`${d.criados} inadimplentes importados para o Funil CRM (${d.ignorados} já existiam)`, 'success');
+    } else {
+      toast(d.error || 'Erro ao importar', 'error');
+    }
+  } catch (e) { toast('Erro na importação', 'error'); }
+}
+
+// ══════════════════════════════════════════════════════
+// ALUNOS SUB-TABS
+// ══════════════════════════════════════════════════════
+
+let inadimplentesData = [];
+
+function switchSubtabAlunos(tab) {
+  const secAtivos = document.getElementById('secaoAtivos');
+  const secInad   = document.getElementById('secaoInadimplentes');
+  const btnAtivos = document.getElementById('subtabAtivos');
+  const btnInad   = document.getElementById('subtabInadimplentes');
+  const activeStyle = `background:var(--color-accent);color:white`;
+  const inactiveStyle = `background:transparent;color:var(--color-text-secondary)`;
+  if (tab === 'ativos') {
+    secAtivos.style.display = '';
+    secInad.style.display = 'none';
+    btnAtivos.style.cssText += ';' + activeStyle;
+    btnInad.style.cssText += ';' + inactiveStyle;
+  } else {
+    secAtivos.style.display = 'none';
+    secInad.style.display = '';
+    btnAtivos.style.cssText += ';' + inactiveStyle;
+    btnInad.style.cssText += ';' + activeStyle;
+    loadInadimplentes();
+  }
+}
+
+async function loadInadimplentes() {
+  const body = document.getElementById('inadimplentesBody');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="5"><div class="loading"><div class="spinner"></div> Buscando...</div></td></tr>';
+  try {
+    const r = await fetch('/api/alunos/inadimplentes');
+    const d = await r.json();
+    inadimplentesData = d.items || [];
+    renderInadimplentes(inadimplentesData, d.source);
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="5"><div class="empty">Erro: ${e.message}</div></td></tr>`;
+  }
+}
+
+function filtrarInadimplentes() {
+  const q = (document.getElementById('searchInad')?.value || '').toLowerCase();
+  const filtrado = q ? inadimplentesData.filter(a => a.nome.toLowerCase().includes(q)) : inadimplentesData;
+  renderInadimplentes(filtrado, 'cache');
+}
+
+function renderInadimplentes(items, source) {
+  const body = document.getElementById('inadimplentesBody');
+  if (!body) return;
+  if (!items.length) {
+    // Buscar o count do cache de stats para mostrar quantos existem
+    const countEl = document.getElementById('kpiInadimplentes');
+    const countStr = countEl?.textContent?.trim();
+    const count = parseInt(countStr) || null;
+
+    body.innerHTML = `<tr><td colspan="5">
+      <div style="padding:28px 20px;text-align:center">
+        ${count ? `<div style="font-size:36px;font-weight:800;color:#F59E0B;line-height:1;margin-bottom:6px">${count}</div>
+        <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:20px">inadimplentes identificados no sistema PACTO</div>` : ''}
+        <div style="background:rgba(37,99,235,0.07);border:1px solid rgba(37,99,235,0.25);border-radius:14px;padding:22px 24px;max-width:500px;margin:0 auto;text-align:left">
+          <div style="font-size:13px;font-weight:700;color:#93C5FD;margin-bottom:10px;display:flex;align-items:center;gap:7px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            Como ver quem são os inadimplentes
+          </div>
+          <div style="font-size:12px;color:#9CA3AF;line-height:1.9;margin-bottom:18px">
+            A lista detalhada só existe na sessão do PACTO. O <strong style="color:#E2E8F0">Bookmarklet</strong> roda direto no seu browser já logado e traz os dados em segundos:
+          </div>
+          <ol style="font-size:12px;color:#CBD5E1;padding-left:16px;line-height:2.2;margin-bottom:18px;margin-top:0">
+            <li>Clique em <strong style="color:white">"Instalar Bookmarklet"</strong> abaixo</li>
+            <li>Arraste o botão azul para a <strong style="color:white">barra de favoritos</strong></li>
+            <li>Abra o <strong style="color:white">PACTO</strong> no browser e faça login normalmente</li>
+            <li>Clique no favorito <strong style="color:white">"⚡ Sync 24H NORTE"</strong></li>
+            <li>Volte aqui — a lista aparece automaticamente</li>
+          </ol>
+          <button class="btn btn-primary" onclick="mostrarBookmarklet()" style="width:100%;justify-content:center;padding:11px;font-size:13px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:7px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            Instalar Bookmarklet
+          </button>
+        </div>
+      </div>
+    </td></tr>`;
+    return;
+  }
+  body.innerHTML = items.map(a => `
+    <tr>
+      <td>${a.matricula || '—'}</td>
+      <td style="font-weight:500;color:var(--color-text-primary)">${a.nome}</td>
+      <td><span class="badge inadimplente">${a.situacao || 'INADIMPLENTE'}</span></td>
+      <td>${a.telefone || '—'}</td>
+      <td>
+        ${a.telefone ? `<button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="switchTab('whatsapp');document.getElementById('msgTelefone').value='${a.telefone}';document.getElementById('msgNome').value='${a.nome.replace(/'/g,"\\'")}';document.getElementById('msgTemplate').value='cobranca_amigavel';previewMensagem()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>WhatsApp</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function dispararParaInadimplentes() {
+  if (!inadimplentesData.length) { toast('Carregue os inadimplentes primeiro', 'error'); return; }
+  const comTel = inadimplentesData.filter(a => a.telefone);
+  if (!confirm(`Disparar cobrança amigável para ${comTel.length} inadimplentes com telefone?`)) return;
+  // Redirect to broadcast with target=inadimplentes pre-selected
+  switchTab('whatsapp');
+  setTimeout(() => {
+    const t = document.getElementById('broadcastTarget');
+    if (t) { t.value = 'inadimplentes'; calcularBroadcast(); }
+    const tmpl = document.getElementById('broadcastTemplate');
+    if (tmpl) tmpl.value = 'cobranca_amigavel';
+    toast(`${comTel.length} inadimplentes selecionados para disparo`, 'success');
+  }, 200);
+}
+
+// ══════════════════════════════════════════════════════
+// BROADCAST FUNCTIONS
+// ══════════════════════════════════════════════════════
+
+async function calcularBroadcast() {
+  try {
+    const target = document.getElementById('broadcastTarget')?.value || 'ativos';
+    const r = await fetch(`/api/whatsapp/broadcast/preview?target=${target}`);
+    const d = await r.json();
+    document.getElementById('broadcastCount').textContent = d.total || 0;
+  } catch (e) {
+    document.getElementById('broadcastCount').textContent = '?';
+  }
+}
+
+async function confirmarBroadcast() {
+  const templateKey = document.getElementById('broadcastTemplate').value;
+  const mensagemCustom = document.getElementById('broadcastCustomMsg').value.trim();
+  const count = document.getElementById('broadcastCount').textContent;
+
+  if (!templateKey && !mensagemCustom) {
+    toast('Selecione um template ou escreva uma mensagem', 'error');
+    return;
+  }
+
+  const confirmado = confirm(`Tem certeza? Isso enviará mensagem para ${count} alunos ativos.\n\nEssa ação não pode ser desfeita.`);
+  if (!confirmado) return;
+
+  const statusEl = document.getElementById('broadcastStatus');
+  const progressEl = document.getElementById('broadcastProgress');
+  const barEl = document.getElementById('broadcastBar');
+
+  progressEl.style.display = 'block';
+  barEl.style.width = '5%';
+  statusEl.textContent = 'Iniciando disparo...';
+
+  try {
+    const r = await fetch('/api/whatsapp/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ templateKey, mensagemCustom, target: document.getElementById('broadcastTarget')?.value || 'ativos' }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      barEl.style.width = '100%';
+      statusEl.textContent = `✅ Disparo iniciado! ${d.total} mensagens sendo enviadas em background (≈${Math.ceil(d.total * 3.5 / 60)} min)`;
+      toast(`Disparo iniciado para ${d.total} alunos!`, 'success');
+    } else {
+      progressEl.style.display = 'none';
+      statusEl.textContent = '❌ ' + (d.error || 'Erro');
+      toast('Erro: ' + d.error, 'error');
+    }
+  } catch (e) {
+    progressEl.style.display = 'none';
+    statusEl.textContent = '❌ Erro de conexão';
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function importarInativos() {
+  const btn = document.getElementById('btnImportarInativos');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Importando...'; }
+  try {
+    const r = await fetch('/api/oportunidades/importar-inativos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tamanho: 50 }) });
+    const d = await r.json();
+    if (d.success) {
+      toast(`${d.criados} oportunidades criadas (${d.ignorados} já existiam)`, 'success');
+      loadOportunidades();
+    } else {
+      toast('Erro: ' + d.error, 'error');
+    }
+  } catch (e) {
+    toast('Erro: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📥 Importar Inativos'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// CADÊNCIAS — MASSA
+// ═══════════════════════════════════════════════════════
+
+let massaBase = null;
+let massaTipo = null;
+
+async function loadMassaPreviews() {
+  const bases = ['ativos', 'inadimplentes', 'oportunidades'];
+  const ids = { ativos: 'countAtivos', inadimplentes: 'countInadimplentes', oportunidades: 'countOportunidades' };
+  for (const b of bases) {
+    try {
+      const r = await fetch(`/api/cadencias/massa/preview?base=${b}`);
+      const d = await r.json();
+      const el = document.getElementById(ids[b]);
+      if (el) el.textContent = d.total ?? 0;
+    } catch (_) {}
+  }
+}
+
+function selecionarBase(base) {
+  massaBase = base;
+  document.querySelectorAll('.base-card').forEach(c => c.classList.remove('selected'));
+  const card = document.getElementById('baseCard' + base.charAt(0).toUpperCase() + base.slice(1));
+  if (card) card.classList.add('selected');
+  atualizarResumoMassa();
+}
+
+function selecionarTipoCadencia(tipo) {
+  massaTipo = tipo;
+  document.querySelectorAll('.cadencia-tipo-card').forEach(c => c.classList.remove('selected'));
+  const card = document.getElementById('ct_' + tipo);
+  if (card) card.classList.add('selected');
+  atualizarResumoMassa();
+}
+
+function atualizarResumoMassa() {
+  const resumo = document.getElementById('massaResumo');
+  const btn = document.getElementById('btnMassa');
+  if (!massaBase || !massaTipo) {
+    resumo.textContent = 'Selecione a base e o tipo de cadência acima';
+    btn.disabled = true;
+    return;
+  }
+  const nomes = { ativos: 'Alunos Ativos', inadimplentes: 'Inadimplentes', oportunidades: 'Oportunidades CRM' };
+  const tipos = { lead_novo: 'Lead Novo', visita_sem_fechamento: 'Visita s/ Fechamento', agendamento: 'Agendamento', renovacao: 'Renovação', reativacao: 'Reativação' };
+  const idCount = { ativos: 'countAtivos', inadimplentes: 'countInadimplentes', oportunidades: 'countOportunidades' };
+  const count = document.getElementById(idCount[massaBase])?.textContent || '?';
+  resumo.innerHTML = `Cadência <strong>${tipos[massaTipo] || massaTipo}</strong> para <strong>${count} contatos</strong> da base <strong>${nomes[massaBase]}</strong>`;
+  btn.disabled = false;
+}
+
+async function confirmarMassa() {
+  if (!massaBase || !massaTipo) return;
+  const nomes = { ativos: 'Alunos Ativos', inadimplentes: 'Inadimplentes', oportunidades: 'Oportunidades CRM' };
+  const tipos = { lead_novo: 'Lead Novo', visita_sem_fechamento: 'Visita s/ Fechamento', agendamento: 'Agendamento', renovacao: 'Renovação', reativacao: 'Reativação' };
+  const idCount = { ativos: 'countAtivos', inadimplentes: 'countInadimplentes', oportunidades: 'countOportunidades' };
+  const count = document.getElementById(idCount[massaBase])?.textContent || '?';
+
+  if (!confirm(`Confirmar disparo de cadência "${tipos[massaTipo] || massaTipo}" para ${count} contatos da base "${nomes[massaBase]}"?\n\nIsso agendará mensagens automáticas para todos os contatos.`)) return;
+
+  const btn = document.getElementById('btnMassa');
+  btn.disabled = true;
+  btn.textContent = 'Agendando...';
+
+  try {
+    const r = await fetch('/api/cadencias/massa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base: massaBase, tipo: massaTipo }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast(`✅ ${d.agendados} cadências agendadas com sucesso!`, 'success');
+      renderCadencias();
+    } else {
+      toast('Erro: ' + (d.error || 'Falha no agendamento'), 'error');
+    }
+  } catch (e) {
+    toast('Erro: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="zap" style="width:15px;height:15px;vertical-align:-2px;margin-right:6px"></i>Disparar para todos';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// CADÊNCIAS
+// ═══════════════════════════════════════════════════════
+
+async function iniciarCadencia() {
+  const nome = document.getElementById('cadNome').value;
+  const telefone = document.getElementById('cadTelefone').value;
+  const tipo = document.getElementById('cadTipo').value;
+  const oportunidadeId = document.getElementById('cadOportunidadeId')?.value || '';
+
+  if (!nome || !telefone) { toast('Preencha nome e telefone', 'error'); return; }
+
+  try {
+    const body = { nome, telefone, tipo };
+    if (oportunidadeId) body.oportunidadeId = oportunidadeId;
+    const r = await fetch('/api/cadencias/iniciar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (data.success) {
+      toast(`Cadência "${tipo}" iniciada para ${nome}!`, 'success');
+      const opFld = document.getElementById('cadOportunidadeId');
+      if (opFld) opFld.value = '';
+      cadenciasLocal.push(...(data.agendamentos || []));
+      renderCadencias();
+    } else {
+      toast('Erro: ' + (data.error || 'Falha'), 'error');
+    }
+  } catch (e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function renderCadencias() {
+  try {
+    const r = await fetch('/api/cadencias/fila');
+    const data = await r.json();
+    const fila = data.fila || cadenciasLocal;
+
+    const pendentes = fila.filter(a => a.status === 'pendente').length;
+    document.getElementById('filaCount').textContent = `${pendentes} pendentes`;
+
+    const body = document.getElementById('cadenciasBody');
+    if (!fila.length) {
+      body.innerHTML = '<tr><td colspan="5"><div class="empty">Nenhuma cadência agendada.</div></td></tr>';
+      return;
+    }
+    body.innerHTML = fila.map(a => `
+      <tr>
+        <td>${a.leadNome || '—'}</td>
+        <td>${a.descricao}</td>
+        <td>${new Date(a.dataEnvio).toLocaleString('pt-BR')}</td>
+        <td><span class="badge ${a.status}">${a.status}</span></td>
+        <td>
+          ${a.status === 'pendente' ? `
+            <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px"
+              onclick="cancelarCadencia('${a.id}')">❌ Cancelar</button>
+          ` : ''}
+        </td>
+      </tr>
+    `).join('');
+  } catch {}
+}
+
+async function cancelarCadencia(id) {
+  try {
+    await fetch(`/api/cadencias/agendamento/${id}`, { method: 'DELETE' });
+    renderCadencias();
+    toast('Agendamento cancelado', 'success');
+  } catch (e) {
+    toast('Erro ao cancelar: ' + e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════
+
+function toast(msg, tipo = 'info') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${tipo}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ═══════════════════════════════════════════════════════
+// META ADS
+// ═══════════════════════════════════════════════════════
+
+let _metaData      = null;
+let _metaPeriod    = 'last_30d';
+let _metaUnidade   = 'NORTE';
+let _metaLoaded    = false;
+
+function fmtBRL(v)  { return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtNum(v)  { return v >= 1000 ? (v/1000).toFixed(1).replace('.',',') + 'k' : String(v); }
+function fmtPct(v)  { return v.toFixed(2).replace('.',',') + '%'; }
+
+async function loadMeta(force = false) {
+  if (_metaLoaded && !force) return;
+  _metaLoaded = true;
+
+  document.getElementById('metaTableWrap').innerHTML =
+    '<div class="loading"><div class="spinner"></div> Buscando campanhas...</div>';
+
+  try {
+    const res  = await fetch(`/api/meta/campanhas?period=${_metaPeriod}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    _metaData = data;
+    renderMeta();
+    loadMetaLeads(_metaUnidade); // carrega leads do CRM em paralelo
+  } catch (e) {
+    loadMetaLeads(_metaUnidade);
+    document.getElementById('metaTableWrap').innerHTML =
+      `<div class="empty">Erro ao carregar Meta Ads: ${e.message}</div>`;
+    _metaLoaded = false;
+  }
+}
+
+function metaSetPeriod(period) {
+  _metaPeriod = period;
+  _metaLoaded = false;
+  document.querySelectorAll('.meta-period').forEach(b =>
+    b.classList.toggle('active', b.dataset.period === period));
+  loadMeta();
+}
+
+function metaFiltrarUnidade(unidade) {
+  _metaUnidade = unidade;
+  document.querySelectorAll('.meta-unidade').forEach(b =>
+    b.classList.toggle('active', b.dataset.unidade === unidade));
+  if (_metaData) renderMeta();
+  loadMetaLeads(unidade);
+}
+
+function renderMeta() {
+  if (!_metaData) return;
+  const { campanhas, totals, fetchedAt } = _metaData;
+
+  // KPIs filtrados pela unidade selecionada
+  const filtradas = _metaUnidade === 'ALL'
+    ? campanhas
+    : campanhas.filter(c => c.unidade === _metaUnidade);
+
+  const t = filtradas.reduce((acc, c) => {
+    acc.spend      += c.spend;
+    acc.impressions += c.impressions;
+    acc.reach      += c.reach;
+    acc.clicks     += c.clicks;
+    acc.leads      += c.leads;
+    acc.mensagens  += c.mensagens;
+    return acc;
+  }, { spend:0, impressions:0, reach:0, clicks:0, leads:0, mensagens:0 });
+
+  document.getElementById('mkpiSpend').textContent  = fmtBRL(t.spend);
+  document.getElementById('mkpiImpr').textContent   = fmtNum(t.impressions);
+  document.getElementById('mkpiReach').textContent  = fmtNum(t.reach);
+  document.getElementById('mkpiClicks').textContent = fmtNum(t.clicks);
+  document.getElementById('mkpiLeads').textContent  = t.leads;
+  document.getElementById('mkpiMsgs').textContent   = t.mensagens;
+
+  document.getElementById('metaCampCount').textContent =
+    `${filtradas.length} campanha${filtradas.length !== 1 ? 's' : ''}`;
+  document.getElementById('metaUpdatedAt').textContent =
+    `Atualizado: ${new Date(fetchedAt).toLocaleTimeString('pt-BR')}`;
+
+  if (filtradas.length === 0) {
+    document.getElementById('metaTableWrap').innerHTML =
+      '<div class="empty">Nenhuma campanha ativa para esta unidade.</div>';
+    return;
+  }
+
+  const rows = filtradas
+    .sort((a, b) => b.spend - a.spend)
+    .map(c => {
+      const budget = c.dailyBudget ? fmtBRL(c.dailyBudget) + '/dia' : '—';
+      const conv   = c.objetivo === 'Leads' ? c.leads : c.mensagens;
+      const convLabel = c.objetivo === 'Leads' ? 'Leads' : 'Msgs';
+      const ctrClass = c.ctr >= 3 ? 'color:var(--color-green)' : c.ctr >= 1.5 ? '' : 'color:var(--color-red)';
+      const cpcClass = c.cpc <= 1 ? 'color:var(--color-green)' : c.cpc >= 3 ? 'color:var(--color-red)' : '';
+
+      return `<tr>
+        <td style="max-width:260px">
+          <div style="font-weight:500;color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome}</div>
+          <div style="font-size:11px;color:var(--color-muted);margin-top:2px">
+            <span class="badge ${c.objetivo === 'Leads' ? 'ativo' : 'pendente'}" style="border-radius:4px;padding:2px 6px;margin-right:4px">${c.objetivo}</span>
+            <span style="opacity:.6">${c.unidade}</span>
+          </div>
+        </td>
+        <td style="white-space:nowrap">${budget}</td>
+        <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtBRL(c.spend)}</td>
+        <td style="white-space:nowrap">${fmtNum(c.impressions)}</td>
+        <td style="white-space:nowrap">${fmtNum(c.reach)}</td>
+        <td style="white-space:nowrap">${fmtNum(c.clicks)}</td>
+        <td style="white-space:nowrap;${ctrClass}">${fmtPct(c.ctr)}</td>
+        <td style="white-space:nowrap;${cpcClass}">${c.cpc > 0 ? fmtBRL(c.cpc) : '—'}</td>
+        <td style="white-space:nowrap;font-weight:600;color:var(--color-green)">${conv}</td>
+        <td style="white-space:nowrap;font-size:11px;color:var(--color-muted)">${convLabel}</td>
+      </tr>`;
+    }).join('');
+
+  document.getElementById('metaTableWrap').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Campanha</th>
+            <th>Orçamento</th>
+            <th>Gasto</th>
+            <th>Impressões</th>
+            <th>Alcance</th>
+            <th>Cliques</th>
+            <th>CTR</th>
+            <th>CPC</th>
+            <th>Conv.</th>
+            <th>Tipo</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// ─── META LEADS CRM ───────────────────────────────────
+
+let _metaLeads = [];
+
+async function loadMetaLeads(unidade) {
+  const u = unidade || _metaUnidade || 'NORTE';
+  const wrap = document.getElementById('metaLeadsWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const r = await fetch(`/api/meta/leads?unidade=${u}`);
+    const d = await r.json();
+    _metaLeads = d.leads || [];
+    renderMetaLeads(_metaLeads, u);
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">Erro: ${e.message}</div>`;
+  }
+}
+
+function renderMetaLeads(leads, unidade) {
+  const wrap = document.getElementById('metaLeadsWrap');
+  const countEl = document.getElementById('metaLeadsCount');
+  if (countEl) countEl.textContent = `${leads.length} lead${leads.length!==1?'s':''} no CRM`;
+
+  if (!leads.length) {
+    wrap.innerHTML = `<div class="empty">Nenhum lead de campanha Meta importado${unidade && unidade!=='ALL' ? ' para ' + unidade : ''}.<br><span style="font-size:11px">Use "Importar leads" para adicionar.</span></div>`;
+    return;
+  }
+
+  const etapaCor = { LEAD:'#6B7280', CONTATO:'#06B6D4', VISITA:'#F59E0B', PROPOSTA:'#F97316', FECHADO:'#22C55E', PERDIDO:'#EF4444' };
+
+  const rows = leads.slice(0, 50).map(l => {
+    const tel = l.telefone || '';
+    const dias = l.criadoEm ? Math.floor((Date.now()-new Date(l.criadoEm))/86400000) : '?';
+    const cor  = etapaCor[l.etapa] || '#6B7280';
+    return `<tr>
+      <td>
+        <div style="font-weight:500;color:var(--color-text-primary)">${l.nome}</div>
+        <div style="font-size:11px;color:var(--color-muted)">${tel ? tel.replace(/^55/,'') : '—'}</div>
+      </td>
+      <td style="font-size:11px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--color-muted)">${l.metaCampanhaNome||'—'}</td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:9999px;background:${cor}22;color:${cor}">${l.etapa}</span></td>
+      <td style="font-size:11px;color:var(--color-muted)">${dias}d atrás</td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px"
+            onclick="metaEnviarLead('${tel}','${l.nome.replace(/'/g,"\\'")}','${l.id}')" title="Enviar WhatsApp">
+            <i data-lucide="message-circle" style="width:12px;height:12px"></i>
+          </button>
+          <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px"
+            onclick="metaVerNoFunil('${l.id}')" title="Ver no funil">
+            <i data-lucide="git-merge" style="width:12px;height:12px"></i>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Lead</th><th>Campanha</th><th>Etapa</th><th>Captado</th><th>Ações</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    ${leads.length > 50 ? `<div style="padding:10px 16px;font-size:11px;color:var(--color-muted)">Mostrando 50 de ${leads.length} leads</div>` : ''}
+  `;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function metaEnviarLead(telefone, nome, id) {
+  switchTab('whatsapp');
+  setTimeout(() => {
+    const tEl = document.getElementById('msgTelefone');
+    const nEl = document.getElementById('msgNome');
+    if (tEl) tEl.value = telefone.replace(/^55/, '');
+    if (nEl) nEl.value = nome;
+    if (typeof previewMensagem === 'function') previewMensagem();
+  }, 200);
+}
+
+function metaVerNoFunil(id) {
+  switchTab('funil');
+  setTimeout(() => {
+    if (typeof loadOportunidades === 'function') loadOportunidades();
+  }, 300);
+}
+
+async function metaBulkSend() {
+  const unidade = _metaUnidade === 'ALL' ? 'NORTE' : _metaUnidade;
+  const count = _metaLeads.filter(l =>
+    l.etapa !== 'FECHADO' && l.etapa !== 'PERDIDO' && l.telefone &&
+    (l.metaUnidade === unidade || (l.metaCampanhaNome||'').toUpperCase().includes(unidade))
+  ).length;
+
+  if (count === 0) { toast('Nenhum lead de ' + unidade + ' com telefone no CRM', 'info'); return; }
+
+  const tipo = prompt(`Disparar cadência para ${count} leads de ${unidade}?\n\nDigite o tipo:\n- lead_novo\n- follow_up_d3\n- reativacao\n(ou deixe vazio para cancelar)`);
+  if (!tipo) return;
+
+  try {
+    const r = await fetch('/api/meta/leads/bulk-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unidade, cadenciaTipo: tipo }),
+    });
+    const d = await r.json();
+    if (d.success) toast(`Cadência "${tipo}" agendada para ${d.total} leads de ${unidade}!`, 'success');
+    else toast('Erro: ' + (d.error || 'falha'), 'error');
+  } catch (e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+
+function metaOpenImport() {
+  const modal = document.getElementById('metaImportModal');
+  if (modal) modal.style.display = 'flex';
+  const sel = document.getElementById('importCampanha');
+  const custom = document.getElementById('importCampanhaCustom');
+  if (sel) sel.onchange = () => {
+    if (custom) custom.style.display = sel.value === 'outro' ? 'block' : 'none';
+  };
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function metaExecutarImport() {
+  const raw      = (document.getElementById('importData')?.value || '').trim();
+  const campSel  = document.getElementById('importCampanha')?.value || '';
+  const campCustom = document.getElementById('importCampanhaCustom')?.value || '';
+  const campanha = campSel === 'outro' ? campCustom : campSel;
+
+  if (!raw) { toast('Cole os dados dos leads', 'error'); return; }
+
+  let leads = [];
+  try {
+    // Tenta JSON
+    if (raw.startsWith('[') || raw.startsWith('{')) {
+      const parsed = JSON.parse(raw);
+      leads = Array.isArray(parsed) ? parsed : [parsed];
+    } else {
+      // CSV: primeira linha = headers, ou assume Nome,Telefone,Email
+      const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+      const isHeader = /nome|name|telefone|phone|email/i.test(lines[0]);
+      const headers = isHeader
+        ? lines[0].split(',').map(h => h.trim().toLowerCase())
+        : ['nome', 'telefone', 'email'];
+      const dataLines = isHeader ? lines.slice(1) : lines;
+
+      leads = dataLines.map(line => {
+        const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = cols[i] || ''; });
+        return {
+          nome:     obj.nome || obj.name || obj['nome completo'] || '',
+          telefone: obj.telefone || obj.phone || obj.celular || obj.whatsapp || '',
+          email:    obj.email || obj['e-mail'] || '',
+        };
+      });
+    }
+
+    // Injetar campanha em todos
+    leads = leads.map(l => ({ ...l, campanha: l.campanha || campanha }));
+  } catch (e) {
+    toast('Erro ao parsear dados: ' + e.message, 'error');
+    return;
+  }
+
+  if (!leads.length) { toast('Nenhum lead válido encontrado', 'error'); return; }
+
+  try {
+    const r = await fetch('/api/meta/leads/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leads }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast(`✅ ${d.criados} leads importados! (${d.duplicados} duplicados, ${d.erros} erros)`, 'success');
+      document.getElementById('metaImportModal').style.display = 'none';
+      document.getElementById('importData').value = '';
+      loadMetaLeads(_metaUnidade);
+    } else {
+      toast('Erro: ' + (d.error || 'falha'), 'error');
+    }
+  } catch (e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// DISPARO EM MASSA
+// ═══════════════════════════════════════════════════════
+
+let bulkContatos = [];
+let bulkJobId    = null;
+let bulkPollTimer = null;
+let bulkImagemUrl = null;
+
+function bulkBaixarModeloCSV() {
+  const csv = 'nome,telefone\nJoão Silva,11999990001\nMaria Costa,11988880002';
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'modelo_contatos.csv';
+  a.click();
+}
+
+function bulkImportarCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('bulkCSVPaste').value = e.target.result;
+    bulkParsearCSV();
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function bulkUsarAtivos() {
+  try {
+    const r = await fetch('/api/alunos?limit=2000');
+    const d = await r.json();
+    const items = d.items || d || [];
+    const linhas = items.filter(a => {
+      const tel = Array.isArray(a.telefones) ? (a.telefones[0]?.numero||'') : (a.telefone||'');
+      return tel.replace(/\D/g,'').length >= 10;
+    }).map(a => {
+      const tel = Array.isArray(a.telefones) ? (a.telefones[0]?.numero||'') : (a.telefone||'');
+      return `${a.nome||''},${tel.replace(/\D/g,'')}`;
+    });
+    document.getElementById('bulkCSVPaste').value = 'nome,telefone\n' + linhas.join('\n');
+    bulkParsearCSV();
+    toast(`${linhas.length} alunos ativos carregados`, 'success');
+  } catch(e) { toast('Erro ao carregar alunos: ' + e.message, 'error'); }
+}
+
+function bulkParsearCSV() {
+  const raw = document.getElementById('bulkCSVPaste').value.trim();
+  if (!raw) { bulkContatos = []; bulkAtualizarInfo(); return; }
+  const linhas = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const inicio = linhas[0].toLowerCase().includes('nome') ? 1 : 0;
+  bulkContatos = [];
+  for (let i = inicio; i < linhas.length; i++) {
+    const partes = linhas[i].split(',');
+    const nome = (partes[0]||'').trim();
+    const telefone = (partes[1]||'').replace(/\D/g,'').trim();
+    if (telefone.length >= 10) bulkContatos.push({ nome, telefone });
+  }
+  bulkAtualizarInfo();
+}
+
+function bulkAtualizarInfo() {
+  const el = document.getElementById('bulkContatosInfo');
+  if (!el) return;
+  if (!bulkContatos.length) { el.textContent = ''; return; }
+  el.innerHTML = `<span style="color:#4ade80;font-weight:600">✓ ${bulkContatos.length} contatos carregados</span>`;
+}
+
+function bulkAddVariacao() {
+  const container = document.getElementById('bulkVariacoesContainer');
+  const idx = container.querySelectorAll('.bulk-variacao').length;
+  const div = document.createElement('div');
+  div.className = 'bulk-variacao';
+  div.dataset.idx = idx;
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      <span style="font-size:11px;color:var(--color-accent);font-weight:600">Variação ${idx+1}</span>
+      <button class="btn btn-secondary" style="font-size:10px;padding:2px 6px;margin-left:auto" onclick="bulkRemoverVariacao(this)">✕</button>
+    </div>
+    <textarea class="form-control bulk-msg-variacao" rows="3"
+      placeholder="Oi, {nome}! 😊 Mensagem alternativa..."
+      style="font-size:12px"></textarea>`;
+  container.appendChild(div);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function bulkRemoverVariacao(btn) {
+  const card = btn.closest('.bulk-variacao');
+  const container = document.getElementById('bulkVariacoesContainer');
+  if (container.querySelectorAll('.bulk-variacao').length <= 1) {
+    toast('Mantenha ao menos uma variação', 'error'); return;
+  }
+  card.remove();
+  // Renumerar
+  container.querySelectorAll('.bulk-variacao').forEach((el, i) => {
+    const lbl = el.querySelector('span');
+    if (lbl) lbl.textContent = `Variação ${i+1}`;
+  });
+}
+
+function bulkPreviewImagem(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('bulkImagemPreview').src = e.target.result;
+    document.getElementById('bulkImagemPreview').style.display = 'block';
+    document.getElementById('bulkImagemNome').textContent = file.name;
+    document.getElementById('bulkImagemRemover').style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function bulkRemoverImagem() {
+  bulkImagemUrl = null;
+  document.getElementById('bulkImagemInput').value = '';
+  document.getElementById('bulkImagemPreview').style.display = 'none';
+  document.getElementById('bulkImagemNome').textContent = 'Nenhuma imagem selecionada';
+  document.getElementById('bulkImagemRemover').style.display = 'none';
+}
+
+async function bulkIniciarDisparo() {
+  bulkParsearCSV();
+  if (!bulkContatos.length) { toast('Importe ou cole os contatos primeiro', 'error'); return; }
+
+  const variacoes = [...document.querySelectorAll('.bulk-msg-variacao')]
+    .map(t => t.value.trim()).filter(Boolean);
+  if (!variacoes.length) { toast('Escreva pelo menos uma variação de mensagem', 'error'); return; }
+
+  const delayMin = parseInt(document.getElementById('bulkDelayMin').value) || 8;
+  const delayMax = parseInt(document.getElementById('bulkDelayMax').value) || 20;
+  if (delayMax < delayMin) { toast('Delay máximo deve ser ≥ mínimo', 'error'); return; }
+
+  // Upload da imagem se houver
+  let imagemUrl = null;
+  const imgInput = document.getElementById('bulkImagemInput');
+  if (imgInput.files[0]) {
+    try {
+      const fd = new FormData();
+      fd.append('imagem', imgInput.files[0]);
+      const ru = await fetch('/api/whatsapp/upload-image', { method: 'POST', body: fd });
+      const du = await ru.json();
+      if (du.url) imagemUrl = du.url;
+    } catch(e) { toast('Erro ao fazer upload da imagem: ' + e.message, 'error'); return; }
+  }
+
+  // Confirma
+  const ok = confirm(`Disparar para ${bulkContatos.length} contatos?\n\n` +
+    `• ${variacoes.length} variação(ões)\n` +
+    `• Delay: ${delayMin}–${delayMax}s\n` +
+    (imagemUrl ? '• Com imagem anexada\n' : '') +
+    `\nTempo estimado: ${Math.round(bulkContatos.length * ((delayMin+delayMax)/2) / 60)} min`);
+  if (!ok) return;
+
+  const r = await fetch('/api/whatsapp/bulk-csv', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contatos: bulkContatos, variacoes, imagemUrl, delayMin, delayMax }),
+  });
+  const d = await r.json();
+  if (!d.success) { toast('Erro: ' + d.error, 'error'); return; }
+
+  bulkJobId = d.jobId;
+  document.getElementById('bulkBtnIniciar').disabled = true;
+  document.getElementById('bulkProgressoContainer').style.display = 'block';
+  document.getElementById('bulkTotal').textContent = d.total;
+  bulkPollProgresso();
+}
+
+function bulkPollProgresso() {
+  if (!bulkJobId) return;
+  clearTimeout(bulkPollTimer);
+  bulkPollTimer = setTimeout(async () => {
+    try {
+      const r = await fetch(`/api/whatsapp/bulk-status/${bulkJobId}`);
+      const d = await r.json();
+      const pct = d.total ? Math.round((d.sent + d.erros + d.skipped) / d.total * 100) : 0;
+      document.getElementById('bulkProgressoBar').style.width = pct + '%';
+      document.getElementById('bulkProgressoLabel').textContent =
+        d.status === 'done'    ? `✅ Concluído! ${d.sent} enviados` :
+        d.status === 'aborted' ? `⏹ Interrompido — ${d.sent} enviados` :
+        `Enviando… ${d.sent + d.erros + d.skipped}/${d.total}`;
+      document.getElementById('bulkSent').textContent    = d.sent;
+      document.getElementById('bulkErros').textContent   = d.erros;
+      document.getElementById('bulkSkipped').textContent = d.skipped;
+      if (d.status === 'running') bulkPollProgresso();
+      else {
+        document.getElementById('bulkBtnIniciar').disabled = false;
+        toast(d.status === 'done' ? `Disparo concluído! ${d.sent} enviados ✅` : 'Disparo interrompido', d.status === 'done' ? 'success' : 'error');
+      }
+    } catch { bulkPollProgresso(); }
+  }, 2500);
+}
+
+async function bulkAbortar() {
+  if (!bulkJobId) return;
+  await fetch(`/api/whatsapp/bulk-abort/${bulkJobId}`, { method: 'POST' });
+  toast('Interrompendo disparo…', 'error');
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+
+async function fazerLogout() {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/login.html';
+}
+
+async function carregarUsuarioLogado() {
+  try {
+    const r = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!r.ok) { window.location.href = '/login.html'; return; }
+    const d = await r.json();
+    const el = document.getElementById('sidebarUserEmail');
+    if (el && d.user) el.textContent = d.user.nome || d.user.email;
+  } catch { window.location.href = '/login.html'; }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  carregarUsuarioLogado();
+  refreshDashboard();
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  // Auto-refresh a cada 5 minutos
+  setInterval(refreshDashboard, 5 * 60 * 1000);
+});
+</script>
+</body>
+</html>

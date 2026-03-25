@@ -1,0 +1,106 @@
+[
+  {
+    "id": "51858639-1770-41f4-8492-b081c9628e55",
+    "nome": "Jo�o Silva",
+    "telefone": "11987654321",
+    "email": "joao@gmail.com",
+    "planoInteresse": "Plano Academia",
+    "etapa": "LEAD",
+    "origem": "meta_ads",
+    "fonte": "meta_ads",
+    "metaCampanhaNome": "[V4][NORTE]  CADASTRO FORMULARIO NATIVO - AD",
+    "metaCampanhaId": null,
+    "metaAdsetNome": null,
+    "metaFormId": null,
+    "metaLeadId": null,
+    "metaUnidade": "NORTE",
+    "observacao": null,
+    "historico": [
+      {
+        "data": "2026-03-24T19:51:52.218Z",
+        "tipo": "criacao",
+        "texto": "Lead importado do Meta Ads — [V4][NORTE]  CADASTRO FORMULARIO NATIVO - AD"
+      },
+      {
+        "data": "2026-03-24T19:54:57.398Z",
+        "tipo": "etapa",
+        "texto": "Movido de LEAD → CONTATO"
+      },
+      {
+        "data": "2026-03-24T19:56:38.022Z",
+        "tipo": "etapa",
+        "texto": "Movido de CONTATO → LEAD"
+      },
+      {
+        "data": "2026-03-24T21:56:50.701Z",
+        "tipo": "etapa",
+        "texto": "Movido de LEAD → CONTATO"
+      },
+      {
+        "data": "2026-03-24T21:56:51.392Z",
+        "tipo": "etapa",
+        "texto": "Movido de CONTATO → LEAD"
+      }
+    ],
+    "cadenciaAtiva": "lead_novo",
+    "ultimoContato": null,
+    "criadoEm": "2026-03-24T19:51:52.218Z",
+    "atualizadoEm": "2026-03-24T21:56:51.392Z"
+  },
+  {
+    "id": "8af2797f-920b-4041-8bee-cd78b59c71a3",
+    "nome": "Maria Santos",
+    "telefone": "11912345678",
+    "email": "maria@gmail.com",
+    "planoInteresse": "Plano Academia",
+    "etapa": "LEAD",
+    "origem": "meta_ads",
+    "fonte": "meta_ads",
+    "metaCampanhaNome": "[V4][NORTE]  CADASTRO FORMULARIO NATIVO - AD",
+    "metaCampanhaId": null,
+    "metaAdsetNome": null,
+    "metaFormId": null,
+    "metaLeadId": null,
+    "metaUnidade": "NORTE",
+    "observacao": null,
+    "historico": [
+      {
+        "data": "2026-03-24T19:51:52.220Z",
+        "tipo": "criacao",
+        "texto": "Lead importado do Meta Ads — [V4][NORTE]  CADASTRO FORMULARIO NATIVO - AD"
+      }
+    ],
+    "cadenciaAtiva": "lead_novo",
+    "ultimoContato": null,
+    "criadoEm": "2026-03-24T19:51:52.220Z",
+    "atualizadoEm": "2026-03-24T19:51:52.220Z"
+  },
+  {
+    "id": "e918c578-23f2-4d98-83d1-08e5eef16f83",
+    "nome": "Carlos Lima",
+    "telefone": "11955556666",
+    "email": null,
+    "planoInteresse": "Plano Academia",
+    "etapa": "LEAD",
+    "origem": "meta_ads",
+    "fonte": "meta_ads",
+    "metaCampanhaNome": "[V4][NORTE] GYMBOT - AD",
+    "metaCampanhaId": null,
+    "metaAdsetNome": null,
+    "metaFormId": null,
+    "metaLeadId": null,
+    "metaUnidade": "NORTE",
+    "observacao": null,
+    "historico": [
+      {
+        "data": "2026-03-24T19:51:52.220Z",
+        "tipo": "criacao",
+        "texto": "Lead importado do Meta Ads — [V4][NORTE] GYMBOT - AD"
+      }
+    ],
+    "cadenciaAtiva": "lead_novo",
+    "ultimoContato": null,
+    "criadoEm": "2026-03-24T19:51:52.220Z",
+    "atualizadoEm": "2026-03-24T19:51:52.220Z"
+  }
+]

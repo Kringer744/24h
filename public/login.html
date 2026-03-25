@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>24H NORTE — Login</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0D0D0D;
+      --surface: #141414;
+      --border:  rgba(255,255,255,0.08);
+      --accent:  #2563EB;
+      --accent2: #1D4ED8;
+      --accent-light: #60A5FA;
+      --accent-tint: rgba(37,99,235,0.14);
+      --text:    #f1f5f9;
+      --muted:   #64748b;
+      --error:   #f87171;
+      --radius:  12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* Fundo com grid sutil */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(37,99,235,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px 36px;
+      position: relative;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    }
+
+    /* Brilho azul no topo */
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 180px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-light), transparent);
+    }
+
+    /* Logo */
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, #2563EB, #1D4ED8);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(37,99,235,0.4);
+    }
+
+    .logo-text { line-height: 1.2; }
+    .logo-name  { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+    .logo-sub   { font-size: 11px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    .form-group { margin-bottom: 16px; }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 0.5px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus { border-color: rgba(37,99,235,0.5); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    input::placeholder { color: var(--muted); }
+
+    .btn-login {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 13px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 24px;
+      transition: opacity 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-login:hover  { background: var(--accent2); }
+    .btn-login:active { transform: scale(0.99); }
+    .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .error-msg {
+      display: none;
+      background: rgba(248,113,113,0.1);
+      border: 0.5px solid rgba(248,113,113,0.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--error);
+      margin-top: 16px;
+    }
+    .error-msg.show { display: block; }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .footer {
+      margin-top: 28px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">
+        <div class="logo-name">24H NORTE</div>
+        <div class="logo-sub">Sistema Comercial</div>
+      </div>
+    </div>
+
+    <h2>Bem-vindo de volta</h2>
+    <p class="subtitle">Entre com suas credenciais para acessar o painel</p>
+
+    <form id="loginForm" onsubmit="fazerLogin(event)">
+      <div class="form-group">
+        <label>E-mail</label>
+        <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email" required />
+      </div>
+
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" id="loginSenha" placeholder="••••••••" autocomplete="current-password" required />
+      </div>
+
+      <button class="btn-login" type="submit" id="btnLogin">
+        <span class="spinner" id="loginSpinner"></span>
+        <span id="btnLoginText">Entrar</span>
+      </button>
+
+      <div class="error-msg" id="loginError"></div>
+    </form>
+
+    <div class="footer">24H NORTE · Plataforma Interna · v2.0</div>
+  </div>
+
+  <script>
+    // Se já tem cookie válido, redireciona direto
+    fetch('/api/auth/me').then(r => {
+      if (r.ok) window.location.href = '/';
+    }).catch(() => {});
+
+    async function fazerLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const senha = document.getElementById('loginSenha').value;
+      const btn   = document.getElementById('btnLogin');
+      const spin  = document.getElementById('loginSpinner');
+      const txt   = document.getElementById('btnLoginText');
+      const err   = document.getElementById('loginError');
+
+      btn.disabled = true;
+      spin.style.display = 'block';
+      txt.textContent = 'Entrando...';
+      err.classList.remove('show');
+
+      try {
+        const r = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, senha }),
+        });
+
+        const d = await r.json();
+
+        if (r.ok && d.success) {
+          txt.textContent = '✓ Redirecionando...';
+          window.location.href = '/';
+        } else {
+          err.textContent = d.error || 'Erro ao fazer login';
+          err.classList.add('show');
+          btn.disabled = false;
+          spin.style.display = 'none';
+          txt.textContent = 'Entrar';
+        }
+      } catch (ex) {
+        err.textContent = 'Erro de conexão. Tente novamente.';
+        err.classList.add('show');
+        btn.disabled = false;
+        spin.style.display = 'none';
+        txt.textContent = 'Entrar';
+      }
+    }
+  </script>
+</body>
+</html>
