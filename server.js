@@ -143,13 +143,36 @@ app.get('/diag', async (req, res) => {
     } catch (e) { apiKeyMovErr = e.message; }
   }
 
-  // Testa getContratosCount para diferentes situações via API Key
+  // Analisa ativosData do cache para derivar renovacoes/vencidos
+  const cache2 = require('./src/storage/cache');
+  const alunosCached = cache2.get('alunos');
+  const itens = alunosCached?.items || [];
+  const hoje2 = new Date();
+  const em30dias = new Date(hoje2.getTime() + 30 * 24 * 60 * 60 * 1000);
+  let renovacoes30 = 0, vencidosCalc = 0, semFimContrato = 0, comFimContrato = 0;
+  const amostraDatas = [];
+  itens.forEach(a => {
+    if (!a.fimContrato) { semFimContrato++; return; }
+    comFimContrato++;
+    const fim = new Date(a.fimContrato);
+    if (amostraDatas.length < 5) amostraDatas.push(a.fimContrato);
+    if (fim > hoje2 && fim <= em30dias) renovacoes30++;
+    if (fim < hoje2) vencidosCalc++;
+  });
+
+  // Testa getContratosCount com campo correto (totalElements)
   const pacto = require('./src/integrations/pacto');
-  const statusesToTest = ['VENCIDO', 'ENCERRADO', 'AGREGADOR', 'DEPENDENTE', 'SUSPENSO', 'ATIVO', 'INADIMPLENTE'];
-  const countResults = {};
-  for (const s of statusesToTest) {
-    try { countResults[s] = await pacto.getContratosCount(s); } catch(e) { countResults[s] = `ERR:${e.message}`; }
-  }
+  let rawContratosResp = null;
+  try {
+    const axios2 = require('axios');
+    const config2 = require('./src/config/apis');
+    const r = await axios2.get(`${config2.pacto.gatewayUrl}/adm-core-ms/v1/contratos`, {
+      params: { empresa: 1, unidade: 1, situacao: 'ATIVO', size: 1 },
+      headers: { 'Authorization': `Bearer ${config2.pacto.apiKey}`, 'Content-Type': 'application/json' },
+      timeout: 8000, validateStatus: s => s < 600,
+    });
+    rawContratosResp = { status: r.status, keys: r.data ? Object.keys(r.data) : null, sample: JSON.stringify(r.data).slice(0, 400) };
+  } catch(e) { rawContratosResp = { err: e.message }; }
 
   res.json({
     ts: new Date().toISOString(),
@@ -162,7 +185,8 @@ app.get('/diag', async (req, res) => {
     } : null,
     directMovErr,
     directFinErr,
-    contratosCount: countResults,
+    fimContratoAnalise: { total: itens.length, comFimContrato, semFimContrato, renovacoes30, vencidosCalc, amostraDatas },
+    rawContratosResp,
     pactoSession: pactoSession.getSessionStatus(),
     envVars: {
       PACTO_USER:        process.env.PACTO_USER        ? '✓' : '✗',
