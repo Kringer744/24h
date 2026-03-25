@@ -8,12 +8,12 @@
 const cache = require('../storage/cache');
 const pacto = require('../integrations/pacto');
 
-// Puppeteer só funciona localmente — no Vercel (serverless) desabilita graciosamente
-const isVercel = !!process.env.VERCEL;
+// pactoSession usa apenas Axios (HTTP) — funciona em qualquer ambiente incluindo Vercel
+// pactoHeadless usa puppeteer (Chrome) — só funciona localmente
 let pactoSession  = null;
 let pactoHeadless = null;
-if (!isVercel) {
-  try { pactoSession  = require('../integrations/pactoSession');  } catch (_) {}
+try { pactoSession  = require('../integrations/pactoSession');  } catch (_) {}
+if (!process.env.VERCEL) {
   try { pactoHeadless = require('../integrations/pactoHeadless'); } catch (_) {}
 }
 
@@ -70,7 +70,25 @@ async function runSync() {
 
     const hasCredentials = !!(process.env.PACTO_USER && process.env.PACTO_PASS);
 
-    if (hasCredentials && pactoHeadless) {
+    if (hasCredentials && !pactoHeadless && pactoSession) {
+      // Vercel / sem Chrome: usa sessão HTTP direto
+      console.log('[AUTO-SYNC] Modo HTTP session (sem puppeteer)...');
+      const sessionOk = await pactoSession.ensureSession().catch(() => false);
+      if (sessionOk) {
+        const [movRes, finRes, leadsRes] = await Promise.allSettled([
+          pactoSession.getMovimentacao(),
+          pactoSession.getFinanceiro(),
+          pactoSession.getLeadsCrm(),
+        ]);
+        movData   = movRes.status  === 'fulfilled' ? movRes.value  : null;
+        finData   = finRes.status  === 'fulfilled' ? finRes.value  : null;
+        leadsData = leadsRes.status === 'fulfilled' ? leadsRes.value : null;
+        if (movData) console.log('[AUTO-SYNC] Movimentação OK (session HTTP)');
+        if (finData) console.log('[AUTO-SYNC] Financeiro OK (session HTTP)');
+      } else {
+        console.warn('[AUTO-SYNC] Login HTTP falhou — apenas dados da API key.');
+      }
+    } else if (hasCredentials && pactoHeadless) {
       try {
         // Garante JWT válido (faz login headless se necessário)
         await pactoHeadless.ensureJwt();
