@@ -145,18 +145,22 @@ app.get('/diag', async (req, res) => {
 
   // Tenta login JWT via auth URL com diferentes formatos
   let jwtResult = null, jwtErr = null;
-  if (authUrl) {
+  if (authUrl && apiKey) {
+    // Tenta: Bearer API_KEY no header + credenciais no body
     const formats = [
-      { login: process.env.PACTO_USER, senha: process.env.PACTO_PASS, empresaId: parseInt(emp), unidadeId: parseInt(uni) },
-      { username: process.env.PACTO_USER, password: process.env.PACTO_PASS },
-      { email: process.env.PACTO_USER, password: process.env.PACTO_PASS, empresaId: parseInt(emp) },
+      { body: { login: process.env.PACTO_USER, senha: process.env.PACTO_PASS, empresaId: parseInt(emp), unidadeId: parseInt(uni) }, desc: 'apikey-header+login-body' },
+      { body: { username: process.env.PACTO_USER, password: process.env.PACTO_PASS, empresaId: parseInt(emp) }, desc: 'apikey-header+username-body' },
+      { body: { login: process.env.PACTO_USER, senha: process.env.PACTO_PASS }, desc: 'apikey-header+login-only' },
     ];
-    for (const body of formats) {
+    for (const { body, desc } of formats) {
       try {
-        const r = await axios.post(`${authUrl}/api/authenticate`, body, { timeout: 8000, validateStatus: s => s < 600 });
-        jwtResult = { status: r.status, keys: r.data ? Object.keys(r.data) : null, sample: JSON.stringify(r.data).slice(0, 300) };
+        const r = await axios.post(`${authUrl}/api/authenticate`, body, {
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          timeout: 8000, validateStatus: s => s < 600,
+        });
+        jwtResult = { desc, status: r.status, keys: r.data ? Object.keys(r.data) : null, sample: JSON.stringify(r.data).slice(0, 300) };
         if (r.status < 400) break;
-      } catch (e) { jwtErr = e.message; }
+      } catch (e) { jwtErr = (jwtErr || '') + `${desc}:${e.message} | `; }
     }
   }
 
