@@ -143,16 +143,33 @@ app.get('/diag', async (req, res) => {
     } catch (e) { apiKeyMovErr = e.message; }
   }
 
-  // Testa endpoint INATIVO para count de contratos inativos
   const axios2 = require('axios');
   const config2 = require('./src/config/apis');
-  const gwBase = config2.pacto.gatewayUrl;
-  const gwHeaders = { 'Authorization': `Bearer ${config2.pacto.apiKey}`, 'empresaId': '1', 'unidadeId': '1' };
-  let inativoTest = null;
-  try {
-    const r = await axios2.get(`${gwBase}/v1/cliente/situacao=INATIVO`, { params: { empresa: 1, unidade: 1, page: 0, size: 1 }, headers: gwHeaders, timeout: 8000, validateStatus: s => s < 600 });
-    inativoTest = { status: r.status, keys: r.data ? (Array.isArray(r.data) ? ['array', r.data.length] : Object.keys(r.data)) : null, sample: JSON.stringify(r.data).slice(0, 400) };
-  } catch(e) { inativoTest = { err: e.message }; }
+  const authUrl2 = config2.pacto.authUrl; // https://auth.ms.pactosolucoes.com.br
+  const jsessionid2 = pactoSession.getJsessionid();
+
+  // Tenta trocar JSESSIONID por JWT no auth MS
+  let jwtFromSession = null, jwtFromSessionErr = null;
+  if (jsessionid2 && authUrl2) {
+    try {
+      // Hipótese: POST /api/authenticate com JSESSIONID como Bearer
+      const r = await axios2.post(`${authUrl2}/api/authenticate`,
+        { empresaId: parseInt(emp), unidadeId: parseInt(uni) },
+        { headers: { 'Authorization': `Bearer ${jsessionid2}`, 'Content-Type': 'application/json' }, timeout: 10000, validateStatus: s => s < 600 });
+      jwtFromSession = { status: r.status, keys: r.data ? Object.keys(r.data) : null, sample: JSON.stringify(r.data).slice(0, 400) };
+    } catch(e) { jwtFromSessionErr = e.message; }
+  }
+
+  // Se obteve JWT, tenta o sintetico
+  let sinteticoWithJwt = null;
+  const jwtToken = jwtFromSession?.status < 400 ? (jwtFromSession?.sample?.match(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/)?.[0]) : null;
+  if (jwtToken) {
+    try {
+      const r2 = await axios2.get(`https://app.pactosolucoes.com.br/sintetico/prest/movimentacao-contratos`,
+        { params: { empresa: emp, unidade: uni, dtIni: mesInicio, dtFim: hoje }, headers: { 'Authorization': `Bearer ${jwtToken}`, 'empresaId': emp, 'unidadeId': uni }, timeout: 10000, validateStatus: s => s < 600 });
+      sinteticoWithJwt = { status: r2.status, keys: r2.data ? Object.keys(r2.data) : null, sample: JSON.stringify(r2.data).slice(0, 300) };
+    } catch(e) { sinteticoWithJwt = { err: e.message }; }
+  }
   const pacto = require('./src/integrations/pacto');
 
   res.json({
@@ -166,7 +183,8 @@ app.get('/diag', async (req, res) => {
     } : null,
     directMovErr,
     directFinErr,
-    inativoTest,
+    jwtFromSession: { result: jwtFromSession, err: jwtFromSessionErr },
+    sinteticoWithJwt,
     pactoSession: pactoSession.getSessionStatus(),
     envVars: {
       PACTO_USER:        process.env.PACTO_USER        ? '✓' : '✗',
