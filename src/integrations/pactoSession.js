@@ -126,25 +126,29 @@ async function login() {
 
     const responseText = typeof postResp.data === 'string' ? postResp.data : JSON.stringify(postResp.data);
 
-    // Login OK: resposta XML não contém campo de senha (usuário foi autenticado)
-    // Login FALHOU: resposta contém mensagem de erro ou o campo de senha ainda aparece
+    // Detectar erros explícitos de credencial no XML de resposta
+    // NÃO usar 'fmLay:pwdLoginZW' — o JSF inclui o campo no HTML do painel mesmo em login OK
     const loginFailed = responseText.includes('Usu&#225;rio ou senha inv&#225;lidos') ||
                         responseText.includes('Usuário ou senha inválidos') ||
                         responseText.includes('usuario_ou_senha_invalidos') ||
-                        responseText.includes('fmLay:pwdLoginZW') ||
                         responseText.includes('senha_invalida');
-    const loginOk = !loginFailed && (
-      postResp.status === 200 ||
-      postResp.status === 302 ||
-      responseText.includes('painelLogado') ||
-      responseText.includes('JSESSIONID')
-    );
 
-    if (!loginOk) {
-      // Tentar extrair mensagem de erro do XML de resposta
+    if (loginFailed) {
       const errMatch = responseText.match(/mensagem[^>]*>([^<]{5,100})</i);
-      const errMsg = errMatch ? errMatch[1].trim() : 'Credenciais inválidas — verifique usuário e senha';
+      const errMsg = errMatch ? errMatch[1].trim() : 'Usuário ou senha inválidos';
       throw new Error(errMsg);
+    }
+
+    // Passo 4: Verificação real — GET em página protegida para confirmar sessão ativa
+    const verifyResp = await http.get(`${APP_URL}/sintetico/`, {
+      headers: { 'Cookie': `JSESSIONID=${finalSession}` },
+      maxRedirects: 0,
+      validateStatus: s => s < 500,
+    }).catch(() => null);
+
+    // Se redirecionar para /login → sessão inválida
+    if (!verifyResp || (verifyResp.status === 302 && verifyResp.headers?.location?.includes('login'))) {
+      throw new Error('Sessão não confirmada após login — credenciais podem estar incorretas');
     }
 
     _session.jsessionid = finalSession;
