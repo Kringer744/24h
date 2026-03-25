@@ -102,6 +102,33 @@ app.get('/api/config/status', (req, res) => {
   });
 });
 
+// Diagnóstico público (sync key) — mostra raw cache do PACTO
+app.get('/api/diag', (req, res) => {
+  const key = req.headers['x-sync-key'] || req.query.key;
+  const SYNC_KEY = process.env.SYNC_KEY || '24hNorte_sync';
+  if (!key || key !== SYNC_KEY) return res.status(403).json({ error: 'Forbidden' });
+  const cache = require('./src/storage/cache');
+  const raw   = cache.get('_raw') || null;
+  const stats = cache.get('stats') || null;
+  res.json({
+    ts: new Date().toISOString(),
+    statsKeys: stats ? Object.keys(stats) : null,
+    statsVals: stats ? {
+      ativos: stats.ativos, novasVendas: stats.novasVendas,
+      renovacoes30d: stats.renovacoes30d, vencidos: stats.vencidos,
+      agregadores: stats.agregadores, inadimplentes: stats.inadimplentes,
+      receita: stats.receita,
+    } : null,
+    rawMovKeys: raw?.movimentacao ? Object.keys(raw.movimentacao) : null,
+    rawMovSample: raw?.movimentacao ? JSON.stringify(raw.movimentacao).slice(0, 500) : null,
+    rawFinKeys: raw?.financeiro ? Object.keys(raw.financeiro) : null,
+    rawFinSample: raw?.financeiro ? JSON.stringify(raw.financeiro).slice(0, 300) : null,
+    pactoSession: require('./src/integrations/pactoSession').getSessionStatus(),
+    pactoUser: process.env.PACTO_USER ? '✓ configurado' : '✗ ausente',
+    pactoPass: process.env.PACTO_PASS ? '✓ configurado' : '✗ ausente',
+  });
+});
+
 // Scripts / templates
 app.get('/api/scripts', (req, res) => {
   const { SCRIPTS, MENSAGENS, CADENCIAS, FUNIL_ETAPAS } = require('./src/flow/scripts');
