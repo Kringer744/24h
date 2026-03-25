@@ -6,7 +6,13 @@ const fs         = require('fs');
 const cookieParser = require('cookie-parser');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+// Detect port from environment or command line arguments
+let PORT = process.env.PORT || 3000;
+const portArgIndex = process.argv.indexOf('--port');
+if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+  PORT = process.argv[portArgIndex + 1];
+}
 
 // ─── MIDDLEWARE ──────────────────────────────────────────────────────────────
 app.use(cors({ credentials: true, origin: true }));
@@ -62,11 +68,12 @@ app.post('/api/config/pacto-credentials', async (req, res) => {
   }
 
   try {
-    const fs = require('fs');
     const envPath = path.join(__dirname, '.env');
-    let envContent = fs.readFileSync(envPath, 'utf8');
+    let envContent = '';
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, 'utf8');
+    }
 
-    // Substituir ou adicionar PACTO_USER e PACTO_PASS
     const update = (content, key, value) => {
       const regex = new RegExp(`^${key}=.*$`, 'm');
       return regex.test(content)
@@ -78,22 +85,18 @@ app.post('/api/config/pacto-credentials', async (req, res) => {
     envContent = update(envContent, 'PACTO_PASS', pactoPass);
     fs.writeFileSync(envPath, envContent, 'utf8');
 
-    // Aplicar em runtime (sem reiniciar)
     process.env.PACTO_USER = pactoUser;
     process.env.PACTO_PASS = pactoPass;
 
-    // Disparar sync imediato com as novas credenciais
     const autoSync = require('./src/flow/autoSync');
     autoSync.runSync().catch(() => {});
 
-    console.log('[CONFIG] Credenciais PACTO atualizadas. Sync disparado.');
     res.json({ success: true, message: 'Credenciais salvas. Sincronizando dados...' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Retorna status das credenciais (sem expor os valores)
 app.get('/api/config/status', (req, res) => {
   const pactoSession = require('./src/integrations/pactoSession');
   res.json({
@@ -102,105 +105,6 @@ app.get('/api/config/status', (req, res) => {
   });
 });
 
-// Diagnóstico público (sync key) — força sync e mostra resultado
-app.get('/diag', async (req, res) => {
-  const key = req.headers['x-sync-key'] || req.query.key;
-  const SYNC_KEY = process.env.SYNC_KEY || '24hNorte_sync';
-  if (!key || key !== SYNC_KEY) return res.status(403).json({ error: 'Forbidden' });
-  const cache     = require('./src/storage/cache');
-  const autoSync  = require('./src/flow/autoSync');
-  let syncError   = null;
-  try { await autoSync.runSync(); } catch (e) { syncError = e.message; }
-  const raw   = cache.get('_raw') || null;
-  const stats = cache.get('stats') || null;
-  // Testa direto as chamadas de sessão para ver o que a API retorna
-  const pactoSession = require('./src/integrations/pactoSession');
-  let directMov = null, directFin = null, directMovErr = null, directFinErr = null;
-  if (pactoSession.getSessionStatus().active) {
-    [directMov, directMovErr] = await pactoSession.getMovimentacao().then(d => [d, null]).catch(e => [null, e.message]);
-    [directFin, directFinErr] = await pactoSession.getFinanceiro().then(d => [d, null]).catch(e => [null, e.message]);
-  }
-
-  const axios = require('axios');
-  const apiKey      = process.env.PACTO_API_KEY;
-  const authUrl     = process.env.PACTO_AUTH_URL;
-  const sinteticoBase = 'https://app.pactosolucoes.com.br/sintetico/prest';
-  const hoje = new Date().toISOString().split('T')[0];
-  const mesInicio = hoje.slice(0, 8) + '01';
-  const emp = process.env.PACTO_EMPRESA_ID || '1';
-  const uni = process.env.PACTO_UNIDADE_ID || '1';
-
-  // Tenta sintetico com API key como Bearer
-  let apiKeyMovResult = null, apiKeyMovErr = null;
-  if (apiKey) {
-    try {
-      const r = await axios.get(`${sinteticoBase}/movimentacao-contratos`, {
-        params: { empresa: emp, unidade: uni, dtIni: mesInicio, dtFim: hoje },
-        headers: { 'Authorization': `Bearer ${apiKey}`, 'empresaId': emp, 'unidadeId': uni },
-        timeout: 10000, validateStatus: s => s < 600,
-      });
-      apiKeyMovResult = { status: r.status, keys: r.data ? Object.keys(r.data) : null, sample: JSON.stringify(r.data).slice(0, 300) };
-    } catch (e) { apiKeyMovErr = e.message; }
-  }
-
-  const axios2 = require('axios');
-  const config2 = require('./src/config/apis');
-  const authUrl2 = config2.pacto.authUrl; // https://auth.ms.pactosolucoes.com.br
-  const jsessionid2 = pactoSession.getJsessionid();
-
-  // Tenta trocar JSESSIONID por JWT no auth MS
-  let jwtFromSession = null, jwtFromSessionErr = null;
-  if (jsessionid2 && authUrl2) {
-    try {
-      // Hipótese: POST /api/authenticate com JSESSIONID como Bearer
-      const r = await axios2.post(`${authUrl2}/api/authenticate`,
-        { empresaId: parseInt(emp), unidadeId: parseInt(uni) },
-        { headers: { 'Authorization': `Bearer ${jsessionid2}`, 'Content-Type': 'application/json' }, timeout: 10000, validateStatus: s => s < 600 });
-      jwtFromSession = { status: r.status, keys: r.data ? Object.keys(r.data) : null, sample: JSON.stringify(r.data).slice(0, 400) };
-    } catch(e) { jwtFromSessionErr = e.message; }
-  }
-
-  // Se obteve JWT, tenta o sintetico
-  let sinteticoWithJwt = null;
-  const jwtToken = jwtFromSession?.status < 400 ? (jwtFromSession?.sample?.match(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/)?.[0]) : null;
-  if (jwtToken) {
-    try {
-      const r2 = await axios2.get(`https://app.pactosolucoes.com.br/sintetico/prest/movimentacao-contratos`,
-        { params: { empresa: emp, unidade: uni, dtIni: mesInicio, dtFim: hoje }, headers: { 'Authorization': `Bearer ${jwtToken}`, 'empresaId': emp, 'unidadeId': uni }, timeout: 10000, validateStatus: s => s < 600 });
-      sinteticoWithJwt = { status: r2.status, keys: r2.data ? Object.keys(r2.data) : null, sample: JSON.stringify(r2.data).slice(0, 300) };
-    } catch(e) { sinteticoWithJwt = { err: e.message }; }
-  }
-  const pacto = require('./src/integrations/pacto');
-
-  res.json({
-    ts: new Date().toISOString(),
-    syncError,
-    statsVals: stats ? {
-      ativos: stats.ativos, novasVendas: stats.novasVendas,
-      renovacoes30d: stats.renovacoes30d, vencidos: stats.vencidos,
-      agregadores: stats.agregadores, inadimplentes: stats.inadimplentes,
-      receita: stats.receita,
-    } : null,
-    directMovErr,
-    directFinErr,
-    jwtFromSession: { result: jwtFromSession, err: jwtFromSessionErr },
-    sinteticoWithJwt,
-    pactoSession: pactoSession.getSessionStatus(),
-    envVars: {
-      PACTO_USER:        process.env.PACTO_USER        ? '✓' : '✗',
-      PACTO_PASS:        process.env.PACTO_PASS        ? '✓' : '✗',
-      PACTO_API_KEY:     process.env.PACTO_API_KEY     ? '✓' : '✗',
-      PACTO_AUTH_URL:    process.env.PACTO_AUTH_URL    ? '✓ ' + process.env.PACTO_AUTH_URL : '✗',
-      PACTO_SINTETICO_URL: process.env.PACTO_SINTETICO_URL ? '✓ ' + process.env.PACTO_SINTETICO_URL : '✗',
-      PACTO_PERSONAGEM_URL: process.env.PACTO_PERSONAGEM_URL ? '✓ ' + process.env.PACTO_PERSONAGEM_URL : '✗',
-      PACTO_EMPRESA_ID:  process.env.PACTO_EMPRESA_ID  || '(default 4)',
-      PACTO_UNIDADE_ID:  process.env.PACTO_UNIDADE_ID  || '(default 4)',
-      PACTO_UNIDADE_CHAVE: process.env.PACTO_UNIDADE_CHAVE || '(default 24H_NORTE)',
-    },
-  });
-});
-
-// Scripts / templates
 app.get('/api/scripts', (req, res) => {
   const { SCRIPTS, MENSAGENS, CADENCIAS, FUNIL_ETAPAS } = require('./src/flow/scripts');
   res.json({
@@ -211,7 +115,6 @@ app.get('/api/scripts', (req, res) => {
   });
 });
 
-// ─── CONFIG GERAL ─────────────────────────────────────────────────────────────
 const CONFIG_FILE = require('./src/config/paths').CONFIG_FILE;
 function loadConfig() {
   try { return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); } catch { return {}; }
@@ -230,13 +133,10 @@ app.patch('/api/config', (req, res) => {
   res.json(cfg);
 });
 
-// SPA fallback — protege o dashboard
 app.get('*', (req, res, next) => {
-  // login.html é público
   if (req.path === '/login.html' || req.path === '/login') {
     return res.sendFile(path.join(__dirname, 'public', 'login.html'));
   }
-  // Demais páginas exigem auth
   const token = req.cookies?.auth_token;
   if (!token) return res.redirect('/login.html');
   try {
@@ -248,20 +148,13 @@ app.get('*', (req, res, next) => {
   }
 });
 
-// ─── AUTO-SYNC via API Key (funciona local e no Vercel) ──────────────────────
-// Busca dados do PACTO via API key automaticamente.
-// No Vercel: roda uma vez quando a função é carregada (warm start).
-// Localmente: roda a cada 30 min via setInterval.
 const autoSync = require('./src/flow/autoSync');
 autoSync.start();
 
-// ─── START ───────────────────────────────────────────────────────────────────
-// Exporta o app para o Vercel (serverless)
 module.exports = app;
 
-// Sobe o servidor apenas quando executado diretamente (local / VPS)
 if (require.main === module) {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`\n🏋️  24H NORTE — Sistema Comercial`);
     console.log(`📊  Dashboard:  http://localhost:${PORT}`);
     console.log(`🔌  API:        http://localhost:${PORT}/api`);
@@ -269,8 +162,16 @@ if (require.main === module) {
     console.log(`💬  UAZAPI: ${process.env.UAZAPI_BASE_URL}`);
     console.log('');
 
-    // Inicia motor de cadências (não roda em serverless)
     const { iniciarCron } = require('./src/flow/cadencias');
     iniciarCron();
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Please check if another instance is running.`);
+      process.exit(1);
+    } else {
+      throw err;
+    }
   });
 }
