@@ -150,6 +150,13 @@ app.get('*', (req, res, next) => {
   }
 });
 
+// ─── AUTO-SYNC via API Key (funciona local e no Vercel) ──────────────────────
+// Busca dados do PACTO via API key automaticamente.
+// No Vercel: roda uma vez quando a função é carregada (warm start).
+// Localmente: roda a cada 30 min via setInterval.
+const autoSync = require('./src/flow/autoSync');
+autoSync.start();
+
 // ─── START ───────────────────────────────────────────────────────────────────
 // Exporta o app para o Vercel (serverless)
 module.exports = app;
@@ -167,9 +174,5 @@ if (require.main === module) {
     // Inicia motor de cadências (não roda em serverless)
     const { iniciarCron } = require('./src/flow/cadencias');
     iniciarCron();
-
-    // Inicia auto-sync (não roda em serverless — use /api/sync manual)
-    const autoSync = require('./src/flow/autoSync');
-    autoSync.start();
   });
 }
