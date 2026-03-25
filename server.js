@@ -143,37 +143,12 @@ app.get('/diag', async (req, res) => {
     } catch (e) { apiKeyMovErr = e.message; }
   }
 
-  // Tenta extrair JWT da página /sintetico/ após login JSF
-  let jwtFromPage = null, jwtFromPageErr = null;
-  const jsessionid = pactoSession.getJsessionid();
-  if (jsessionid) {
-    try {
-      const sinteticoPageResp = await axios.get('https://app.pactosolucoes.com.br/sintetico/', {
-        headers: { 'Cookie': `JSESSIONID=${jsessionid}`, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-        timeout: 12000, maxRedirects: 5, validateStatus: s => s < 600,
-      });
-      const html = typeof sinteticoPageResp.data === 'string' ? sinteticoPageResp.data : '';
-      const jwtMatch = html.match(/eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}/);
-      const cookies = sinteticoPageResp.headers['set-cookie'] || [];
-      jwtFromPage = {
-        status: sinteticoPageResp.status,
-        location: sinteticoPageResp.headers.location || null,
-        jwtFound: jwtMatch ? jwtMatch[0].slice(0, 80) + '...' : null,
-        cookies: cookies.map(c => c.split(';')[0].split('=')[0]),
-        htmlSnippet: html.slice(0, 400),
-      };
-    } catch (e) { jwtFromPageErr = e.message; }
-  }
-
-  // Tenta auth com Bearer API_KEY no header + credenciais no body
-  let jwtResult = null, jwtErr = null;
-  if (authUrl && apiKey) {
-    try {
-      const r = await axios.post(`${authUrl}/api/authenticate`,
-        { login: process.env.PACTO_USER, senha: process.env.PACTO_PASS, chave: process.env.PACTO_UNIDADE_CHAVE || '24H_NORTE', empresaId: parseInt(emp), unidadeId: parseInt(uni) },
-        { headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, timeout: 10000, validateStatus: s => s < 600 });
-      jwtResult = { status: r.status, keys: r.data ? Object.keys(r.data) : null, sample: JSON.stringify(r.data).slice(0, 400) };
-    } catch (e) { jwtErr = e.message; }
+  // Testa getContratosCount para diferentes situações via API Key
+  const pacto = require('./src/integrations/pacto');
+  const statusesToTest = ['VENCIDO', 'ENCERRADO', 'AGREGADOR', 'DEPENDENTE', 'SUSPENSO', 'ATIVO', 'INADIMPLENTE'];
+  const countResults = {};
+  for (const s of statusesToTest) {
+    try { countResults[s] = await pacto.getContratosCount(s); } catch(e) { countResults[s] = `ERR:${e.message}`; }
   }
 
   res.json({
@@ -187,8 +162,7 @@ app.get('/diag', async (req, res) => {
     } : null,
     directMovErr,
     directFinErr,
-    jwtFromPage: { result: jwtFromPage, err: jwtFromPageErr },
-    jwtAttempt: { authUrl: authUrl ? '✓' : '✗', jwtResult, jwtErr },
+    contratosCount: countResults,
     pactoSession: pactoSession.getSessionStatus(),
     envVars: {
       PACTO_USER:        process.env.PACTO_USER        ? '✓' : '✗',
