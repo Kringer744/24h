@@ -42,18 +42,6 @@ app.use('/api/cadencias',     require('./src/routes/cadencias'));
 app.use('/api/oportunidades', require('./src/routes/oportunidades'));
 app.use('/api/meta',          require('./src/routes/meta'));
 
-// Debug endpoint — testa login PACTO e retorna erro exato
-app.get('/api/debug/session', async (req, res) => {
-  try {
-    const pactoSession = require('./src/integrations/pactoSession');
-    const result = await pactoSession.login();
-    const status = pactoSession.getSessionStatus();
-    res.json({ loginOk: result, status });
-  } catch (e) {
-    res.json({ loginOk: false, error: e.message });
-  }
-});
-
 // Status check
 app.get('/api/status', async (req, res) => {
   const pacto  = require('./src/integrations/pacto');
