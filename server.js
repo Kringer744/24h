@@ -143,29 +143,16 @@ app.get('/diag', async (req, res) => {
     } catch (e) { apiKeyMovErr = e.message; }
   }
 
-  // Testa endpoints alternativos do gateway para vencidos/renovacoes/dependentes
+  // Testa endpoint INATIVO para count de contratos inativos
   const axios2 = require('axios');
   const config2 = require('./src/config/apis');
   const gwBase = config2.pacto.gatewayUrl;
   const gwHeaders = { 'Authorization': `Bearer ${config2.pacto.apiKey}`, 'empresaId': '1', 'unidadeId': '1' };
-  const pathsToTest = [
-    '/psec/clientes/vencidos',
-    '/psec/clientes/inativos',
-    '/psec/contratos/vencidos',
-    '/psec/contratos/renovacoes',
-    '/v1/cliente/situacao=VENCIDO',
-    '/v1/cliente/situacao=INADIMPLENTE',
-    '/v1/contratos',
-    '/v1/contratos/vencidos',
-    '/relatorio/renovacoes',
-  ];
-  const endpointTests = {};
-  for (const p of pathsToTest) {
-    try {
-      const r = await axios2.get(`${gwBase}${p}`, { params: { empresa: 1, unidade: 1, size: 1 }, headers: gwHeaders, timeout: 5000, validateStatus: s => s < 600 });
-      endpointTests[p] = { status: r.status, sample: JSON.stringify(r.data).slice(0, 150) };
-    } catch(e) { endpointTests[p] = { err: e.message.slice(0, 80) }; }
-  }
+  let inativoTest = null;
+  try {
+    const r = await axios2.get(`${gwBase}/v1/cliente/situacao=INATIVO`, { params: { empresa: 1, unidade: 1, page: 0, size: 1 }, headers: gwHeaders, timeout: 8000, validateStatus: s => s < 600 });
+    inativoTest = { status: r.status, keys: r.data ? (Array.isArray(r.data) ? ['array', r.data.length] : Object.keys(r.data)) : null, sample: JSON.stringify(r.data).slice(0, 400) };
+  } catch(e) { inativoTest = { err: e.message }; }
   const pacto = require('./src/integrations/pacto');
 
   res.json({
@@ -179,7 +166,7 @@ app.get('/diag', async (req, res) => {
     } : null,
     directMovErr,
     directFinErr,
-    endpointTests,
+    inativoTest,
     pactoSession: pactoSession.getSessionStatus(),
     envVars: {
       PACTO_USER:        process.env.PACTO_USER        ? '✓' : '✗',
