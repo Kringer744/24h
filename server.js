@@ -113,6 +113,14 @@ app.get('/diag', async (req, res) => {
   try { await autoSync.runSync(); } catch (e) { syncError = e.message; }
   const raw   = cache.get('_raw') || null;
   const stats = cache.get('stats') || null;
+  // Testa direto as chamadas de sessão para ver o que a API retorna
+  const pactoSession = require('./src/integrations/pactoSession');
+  let directMov = null, directFin = null, directMovErr = null, directFinErr = null;
+  if (pactoSession.getSessionStatus().active) {
+    [directMov, directMovErr] = await pactoSession.getMovimentacao().then(d => [d, null]).catch(e => [null, e.message]);
+    [directFin, directFinErr] = await pactoSession.getFinanceiro().then(d => [d, null]).catch(e => [null, e.message]);
+  }
+
   res.json({
     ts: new Date().toISOString(),
     syncError,
@@ -124,9 +132,11 @@ app.get('/diag', async (req, res) => {
     } : null,
     rawMovKeys: raw?.movimentacao ? Object.keys(raw.movimentacao) : null,
     rawMovFull: raw?.movimentacao || null,
-    rawFinKeys: raw?.financeiro ? Object.keys(raw.financeiro) : null,
-    rawFinFull: raw?.financeiro || null,
-    pactoSession: require('./src/integrations/pactoSession').getSessionStatus(),
+    directMov,
+    directMovErr,
+    directFin,
+    directFinErr,
+    pactoSession: pactoSession.getSessionStatus(),
     pactoUser: process.env.PACTO_USER ? '✓ configurado' : '✗ ausente',
     pactoPass: process.env.PACTO_PASS ? '✓ configurado' : '✗ ausente',
   });
