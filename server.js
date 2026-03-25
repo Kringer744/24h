@@ -103,7 +103,7 @@ app.get('/api/config/status', (req, res) => {
 });
 
 // Diagnóstico público (sync key) — mostra raw cache do PACTO
-app.get('/api/diag', (req, res) => {
+app.get('/diag', (req, res) => {
   const key = req.headers['x-sync-key'] || req.query.key;
   const SYNC_KEY = process.env.SYNC_KEY || '24hNorte_sync';
   if (!key || key !== SYNC_KEY) return res.status(403).json({ error: 'Forbidden' });
