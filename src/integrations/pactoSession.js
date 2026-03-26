@@ -171,57 +171,133 @@ async function login() {
 }
 
 /**
- * Garante sessão válida (faz login se necessário)
+ * Tenta obter JWT via Auth MS (REST — funciona no Vercel sem browser)
+ * Salva o JWT no relay para reutilização
+ */
+async function loginViaAuthMs() {
+  const user  = process.env.PACTO_USER;
+  const pass  = process.env.PACTO_PASS;
+  const chave = config.pacto.unidadeChave || '24H_NORTE';
+  const authUrl = (config.pacto.authUrl || 'https://auth.ms.pactosolucoes.com.br').replace(/\/$/, '');
+
+  if (!user || !pass) return null;
+
+  const candidates = [
+    { url: `${authUrl}/auth/login`,   body: { login: user, senha: pass, chave } },
+    { url: `${authUrl}/login`,        body: { login: user, senha: pass, chave } },
+    { url: `${authUrl}/auth/token`,   body: { username: user, password: pass, chave } },
+    { url: `${authUrl}/oauth/token`,  body: { grant_type: 'password', username: user, password: pass } },
+  ];
+
+  for (const { url, body } of candidates) {
+    try {
+      const resp = await axios.post(url, body, {
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        timeout: 12000,
+        validateStatus: s => s < 500,
+      });
+      const d = resp.data || {};
+      const jwt = d.token || d.jwt || d.accessToken || d.access_token;
+      if (jwt && typeof jwt === 'string' && jwt.startsWith('eyJ')) {
+        const expiresAt = d.expiresAt || (d.expires_in ? Date.now() + d.expires_in * 1000 : Date.now() + 90 * 60 * 1000);
+        const relay = require('./pactoJwtRelay');
+        relay.saveJwt(jwt, expiresAt);
+        console.log(`[PACTO-SESSION] Auth MS login OK (${url}). JWT válido por ~90min.`);
+        return jwt;
+      }
+    } catch (_) {}
+  }
+  console.warn('[PACTO-SESSION] Auth MS: nenhum endpoint retornou JWT válido.');
+  return null;
+}
+
+/**
+ * Garante que existe JWT válido ou sessão JSESSIONID ativa
+ * Ordem: 1) JWT relay existente → 2) Auth MS REST → 3) JSESSIONID login
  */
 async function ensureSession() {
+  // 1. JWT relay já válido?
+  try {
+    const relay = require('./pactoJwtRelay');
+    const existing = relay.loadJwt();
+    if (existing) return true;
+  } catch (_) {}
+
+  // 2. Tenta obter JWT via Auth MS (funciona no Vercel sem browser)
+  const jwt = await loginViaAuthMs();
+  if (jwt) return true;
+
+  // 3. Fallback: JSESSIONID cookie via JSF form
   if (isSessionValid()) return true;
   return login();
 }
 
 /**
+ * Tenta requisição GET no sintetico usando um JWT Bearer
+ * Retorna a resposta se for JSON válido (200), null se falhou ou retornou HTML.
+ */
+async function _jwtGet(url, params, jwt) {
+  try {
+    const resp = await axios.get(url, {
+      params,
+      timeout: 20000,
+      headers: {
+        'Authorization': `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/plain, */*',
+        'X-Requested-With': 'XMLHttpRequest',
+        'empresaId': String(EMPRESA_ID),
+        'unidadeId': String(UNIDADE_ID),
+      },
+      validateStatus: s => s < 500,
+    });
+    // Rejeita HTML (página de login)
+    if (resp.status === 200 && typeof resp.data !== 'string') return resp;
+    if (resp.status === 200 && typeof resp.data === 'string' && !resp.data.trim().startsWith('<')) return resp;
+    return null;
+  } catch (_) { return null; }
+}
+
+/**
  * Faz GET em endpoint do sintetico.
- * Tenta JWT relay primeiro (funciona no Vercel quando local envia JWT).
- * Fallback: JSESSIONID cookie (funciona localmente).
+ * Ordem: 1) JWT relay existente → 2) Auth MS login → 3) JSESSIONID cookie
  */
 async function getsintetico(path, params = {}) {
   const url = `${SINTETICO_BASE}${path}`;
+  const relay = require('./pactoJwtRelay');
 
-  // 1. Tenta com JWT relay (armazenado em /tmp/pacto-jwt.json)
-  try {
-    const relay = require('./pactoJwtRelay');
-    const relayJwt = relay.loadJwt();
-    if (relayJwt) {
-      const jwtResp = await axios.get(url, {
-        params,
-        timeout: 20000,
-        headers: {
-          'Authorization': `Bearer ${relayJwt}`,
-          'Content-Type': 'application/json',
-          'empresaId': String(EMPRESA_ID),
-          'unidadeId': String(UNIDADE_ID),
-        },
-        validateStatus: s => s < 500,
-      });
-      if (jwtResp.status === 200) return jwtResp;
-      if (jwtResp.status !== 404) {
-        console.warn('[PACTO-SESSION] Sintetico via JWT relay retornou', jwtResp.status);
-      }
-    }
-  } catch (_) {}
+  // 1. Tenta JWT relay já armazenado
+  const existingJwt = relay.loadJwt();
+  if (existingJwt) {
+    const r = await _jwtGet(url, params, existingJwt);
+    if (r) return r;
+    console.warn('[PACTO-SESSION] JWT relay existente falhou — tentando re-login Auth MS...');
+  }
 
-  // 2. Fallback: JSESSIONID cookie
+  // 2. Tenta Auth MS para obter novo JWT automaticamente
+  const newJwt = await loginViaAuthMs();
+  if (newJwt) {
+    const r = await _jwtGet(url, params, newJwt);
+    if (r) return r;
+    console.warn('[PACTO-SESSION] Auth MS JWT também falhou no sintetico.');
+  }
+
+  // 3. Fallback: JSESSIONID cookie
   const ok = await ensureSession();
   if (!ok) throw new Error(_session.lastError || 'Sem sessão PACTO');
+
+  const sessionHeaders = {
+    'Cookie': `JSESSIONID=${_session.jsessionid}`,
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'X-Requested-With': 'XMLHttpRequest',
+    'Referer': `${APP_URL}/sintetico/`,
+  };
 
   const response = await axios.get(url, {
     params,
     timeout: 20000,
-    headers: {
-      'Cookie': `JSESSIONID=${_session.jsessionid}`,
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Accept': 'application/json, text/plain, */*',
-      'Referer': `${APP_URL}/sintetico/`,
-    },
+    headers: sessionHeaders,
     validateStatus: s => s < 500,
   });
 
@@ -238,10 +314,8 @@ async function getsintetico(path, params = {}) {
       params,
       timeout: 20000,
       headers: {
+        ...sessionHeaders,
         'Cookie': `JSESSIONID=${_session.jsessionid}`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json, text/plain, */*',
-        'Referer': `${APP_URL}/sintetico/`,
       },
     });
   }
