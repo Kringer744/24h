@@ -19,10 +19,12 @@ const config    = require('../config/apis');
 
 const CHROME_PATH    = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const CDP_URL        = 'http://localhost:9222';
-const APP_URL        = 'https://app.pactosolucoes.com.br';
-const LOGIN_URL      = `${APP_URL}/login/`;
-const EMPRESA_ID     = parseInt(config.pacto.empresaId || '1', 10);
-const UNIDADE_ID     = parseInt(config.pacto.unidadeId || '1', 10);
+// Sintetico é servido em lgn.pactosolucoes.com.br; login JSF em app
+const _sinteticoBase = (config.pacto.sinteticoUrl || 'https://lgn.pactosolucoes.com.br/sintetico').replace(/\/$/, '');
+const APP_URL        = new URL(_sinteticoBase).origin; // ex: https://lgn.pactosolucoes.com.br
+const LOGIN_URL      = 'https://app.pactosolucoes.com.br/login/';
+const EMPRESA_ID     = parseInt(config.pacto.empresaId || '4', 10);
+const UNIDADE_ID     = parseInt(config.pacto.unidadeId || '4', 10);
 const CHAVE          = config.pacto.unidadeChave || '24H_NORTE';
 
 let _jwt      = null;
@@ -266,7 +268,7 @@ async function ensureJwt() {
  */
 async function callSintetico(path, params = {}) {
   const jwt = await ensureJwt();
-  const url = `${APP_URL}/sintetico/prest${path}`;
+  const url = `${_sinteticoBase}/prest${path}`;
 
   const res = await axios.get(url, {
     params: { empresa: EMPRESA_ID, unidade: UNIDADE_ID, ...params },

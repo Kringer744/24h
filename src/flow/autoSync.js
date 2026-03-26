@@ -47,43 +47,56 @@ async function runSync() {
 
     const hasCredentials = !!(process.env.PACTO_USER && process.env.PACTO_PASS);
 
-    // Tenta pactoSession (JSESSIONID login automático — funciona local E Vercel)
-    // No Vercel: tenta JWT relay primeiro, depois login via credenciais sem browser
-    // Local: usa headless se disponível, senão cai no pactoSession
     if (hasCredentials) {
-      try {
-        const [movRes, finRes, inadRes] = await Promise.allSettled([
-          pactoSession.getMovimentacao(),
-          pactoSession.getFinanceiro(),
-          pactoSession.getInadimplentesLista(),
-        ]);
-        movData = movRes.status === 'fulfilled' ? movRes.value : null;
-        finData = finRes.status === 'fulfilled' ? finRes.value : null;
-        const inadList = inadRes.status === 'fulfilled' ? inadRes.value : null;
-        if (inadList?.length > 0) {
-          cache.set('inadimplentes_lista', { items: inadList, total: inadList.length });
-          console.log(`[AUTO-SYNC] Inadimplentes via session: ${inadList.length}`);
-        }
-        if (movData || finData) {
-          console.log('[AUTO-SYNC] Dados financeiros via pactoSession OK');
-        } else {
-          console.warn('[AUTO-SYNC] pactoSession sem dados — sessão pode ter falhado');
-        }
-      } catch (e) {
-        console.warn('[AUTO-SYNC] pactoSession falhou:', e.message);
-      }
-
-      // Local: tenta também o Headless com Chrome (mais confiável se Chrome aberto)
-      if (!isVercel && pactoHeadless && !movData) {
+      // Local: tenta primeiro o CDP (Chrome aberto com --remote-debugging-port=9222)
+      // Isso popula o relay JWT ANTES de tentar pactoSession
+      if (!isVercel && pactoHeadless) {
         try {
-          await pactoHeadless.ensureJwt();
-          const [movRes, finRes] = await Promise.allSettled([
+          await pactoHeadless.ensureJwt(); // extrai JWT do Chrome via CDP → salva no relay
+          const [movRes, finRes, inadRes] = await Promise.allSettled([
             pactoHeadless.getMovimentacao(),
             pactoHeadless.getFinanceiro(),
+            pactoHeadless.getInadimplentesLista(),
           ]);
-          movData = movData || (movRes.status === 'fulfilled' ? movRes.value : null);
-          finData = finData || (finRes.status === 'fulfilled' ? finRes.value : null);
-        } catch (_) {}
+          movData = movRes.status === 'fulfilled' ? movRes.value : null;
+          finData = finRes.status === 'fulfilled' ? finRes.value : null;
+          const inadList = inadRes.status === 'fulfilled' ? inadRes.value : null;
+          if (inadList?.length > 0) {
+            cache.set('inadimplentes_lista', { items: inadList, total: inadList.length });
+            console.log(`[AUTO-SYNC] Inadimplentes via headless: ${inadList.length}`);
+          }
+          if (movData || finData) {
+            console.log('[AUTO-SYNC] Dados financeiros via Chrome CDP OK');
+          }
+        } catch (_) {
+          // Chrome sem porta de debug aberta — normal, cai no pactoSession
+        }
+      }
+
+      // Fallback: pactoSession (JWT relay existente + Auth MS + JSESSIONID)
+      // Funciona no Vercel quando local fez relay do JWT
+      if (!movData) {
+        try {
+          const [movRes, finRes, inadRes] = await Promise.allSettled([
+            pactoSession.getMovimentacao(),
+            pactoSession.getFinanceiro(),
+            pactoSession.getInadimplentesLista(),
+          ]);
+          movData = movRes.status === 'fulfilled' ? movRes.value : null;
+          finData = finRes.status === 'fulfilled' ? finRes.value : null;
+          const inadList = inadRes.status === 'fulfilled' ? inadRes.value : null;
+          if (inadList?.length > 0) {
+            cache.set('inadimplentes_lista', { items: inadList, total: inadList.length });
+            console.log(`[AUTO-SYNC] Inadimplentes via session: ${inadList.length}`);
+          }
+          if (movData || finData) {
+            console.log('[AUTO-SYNC] Dados financeiros via pactoSession OK');
+          } else {
+            console.warn('[AUTO-SYNC] pactoSession sem dados — aguardando JWT do browser');
+          }
+        } catch (e) {
+          console.warn('[AUTO-SYNC] pactoSession falhou:', e.message);
+        }
       }
     }
 
