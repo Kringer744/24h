@@ -9,11 +9,14 @@
 const axios = require('axios');
 const config = require('../config/apis');
 
-const APP_URL = 'https://app.pactosolucoes.com.br';
-const SINTETICO_BASE = `${APP_URL}/sintetico/prest`;
-const LOGIN_URL = `${APP_URL}/login/`;
-const EMPRESA_ID = parseInt(config.pacto.empresaId || '1', 10);
-const UNIDADE_ID = parseInt(config.pacto.unidadeId || '1', 10);
+// URL base do PACTO — vem do env (lgn.pactosolucoes.com.br ou app.pactosolucoes.com.br)
+const _sinteticoBase = (config.pacto.sinteticoUrl || 'https://lgn.pactosolucoes.com.br/sintetico').replace(/\/$/, '');
+const _sinteticoHost = new URL(_sinteticoBase).origin; // ex: https://lgn.pactosolucoes.com.br
+const APP_URL    = _sinteticoHost;
+const SINTETICO_BASE = `${_sinteticoBase}/prest`;
+const LOGIN_URL  = `${APP_URL}/login/`;
+const EMPRESA_ID = parseInt(config.pacto.empresaId || '4', 10);
+const UNIDADE_ID = parseInt(config.pacto.unidadeId || '4', 10);
 
 // Estado da sessão em memória
 let _session = {
