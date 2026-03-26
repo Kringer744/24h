@@ -33,13 +33,20 @@ router.post('/sync/force', async (req, res) => {
   }
 });
 
+// Tempo máximo de cache antes de forçar re-sync (25 minutos)
+const STATS_MAX_AGE_MS = 25 * 60 * 1000;
+
 // GET /api/dashboard/stats — lê cache populado pelo auto-sync
 router.get('/stats', async (req, res) => {
   let stats   = cache.get('stats') || {};
   let rawData = cache.get('_raw');
 
-  // Cache vazio — roda o sync agora e espera (cold start no Vercel)
-  if (!stats._syncedAt && !stats.ativos) {
+  // Verifica se cache está vazio OU expirado (cold start no Vercel ou dados antigos)
+  const cacheAge = stats._syncedAt ? Date.now() - new Date(stats._syncedAt).getTime() : Infinity;
+  const needsSync = (!stats._syncedAt && !stats.ativos) || cacheAge > STATS_MAX_AGE_MS;
+
+  if (needsSync) {
+    console.log(`[DASHBOARD] Cache ${!stats._syncedAt ? 'vazio' : 'expirado (' + Math.round(cacheAge/60000) + 'min)'}. Rodando sync...`);
     try { await autoSync.runSync(); } catch (_) {}
     stats   = cache.get('stats') || {};
     rawData = cache.get('_raw');

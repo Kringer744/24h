@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api-docs.pactosolucoes.com.br)",
+      "WebFetch(domain:docs.uazapi.com)",
+      "WebSearch",
+      "Bash(curl -s -X GET \"https://fluxodigitaltech.uazapi.com/instance/info\" -H \"token: ZmzuasZIDxIrV6anLYs6GUKyBwQAjcpXLWPrhWdvRbmb4R2pnV\" -H \"Content-Type: application/json\")"
+    ]
+  }
+}

@@ -134,6 +134,40 @@ app.get('/api/scripts', (req, res) => {
   });
 });
 
+// ─── CRON JOB (chamado pelo Vercel Cron Schedule) ──────────────────────────
+// Protegido pela CRON_SECRET do Vercel (injetada automaticamente)
+app.get('/api/cron/sync', async (req, res) => {
+  // Vercel injeta o header Authorization: Bearer <CRON_SECRET> automaticamente
+  const authHeader = req.headers.authorization || '';
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    console.log('[CRON] Iniciando sync agendado...');
+    await autoSync.runSync();
+    const stats = require('./src/storage/cache').get('stats') || {};
+    console.log('[CRON] Sync concluído. Ativos:', stats.ativos);
+    res.json({ success: true, ts: new Date().toISOString(), ativos: stats.ativos });
+  } catch (err) {
+    console.error('[CRON] Sync falhou:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Warmup manual (força sync imediato sem autenticacao — chamado pelo bookmarklet)
+app.post('/api/warmup', async (req, res) => {
+  const key = req.headers['x-sync-key'] || req.query.key;
+  const SYNC_KEY = process.env.SYNC_KEY || '24hNorte_sync';
+  if (key !== SYNC_KEY) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    await autoSync.runSync();
+    res.json({ success: true, ts: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 const CONFIG_FILE = require('./src/config/paths').CONFIG_FILE;
 function loadConfig() {
   try { return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); } catch { return {}; }
@@ -168,7 +202,15 @@ app.get('*', (req, res, next) => {
 });
 
 const autoSync = require('./src/flow/autoSync');
-autoSync.start();
+// No Vercel (serverless), setInterval não persiste entre invocações.
+// O warm start tenta um sync imediato; o Cron Job mantém o cache atualizado.
+if (process.env.VERCEL) {
+  // No Vercel: tenta sync na inicialização do módulo (warm start)
+  autoSync.runSync().catch(() => {});
+} else {
+  // Local: inicia o intervalo normal
+  autoSync.start();
+}
 
 module.exports = app;
 
