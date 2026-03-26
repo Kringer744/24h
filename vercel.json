@@ -10,11 +10,5 @@
   ],
   "routes": [
     { "src": "/(.*)", "dest": "server.js" }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/sync",
-      "schedule": "0 6 * * *"
-    }
   ]
 }
