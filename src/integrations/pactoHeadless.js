@@ -82,6 +82,8 @@ async function tryExtractFromRunningChrome() {
 
     if (jwt) {
       console.log(`[HEADLESS] JWT extraído do Chrome aberto (${jwt.length} chars)`);
+      const relay = require('./pactoJwtRelay');
+      relay.storeAndRelay(jwt).catch(() => {});
       return jwt;
     }
 
@@ -227,6 +229,10 @@ async function headlessLogin() {
     _jwt   = jwt;
     _jwtAt = Date.now();
     console.log(`[HEADLESS] Login OK. JWT obtido (${jwt.length} chars). Empresa=${emp} Unidade=${uni}`);
+
+    // Relay JWT para o Vercel (se VERCEL_SYNC_URL configurado)
+    const relay = require('./pactoJwtRelay');
+    relay.storeAndRelay(jwt).catch(() => {});
 
     return { jwt, empresa: emp, unidade: uni };
 

@@ -176,13 +176,40 @@ async function ensureSession() {
 }
 
 /**
- * Faz GET em endpoint do sintetico autenticado com JSESSIONID
+ * Faz GET em endpoint do sintetico.
+ * Tenta JWT relay primeiro (funciona no Vercel quando local envia JWT).
+ * Fallback: JSESSIONID cookie (funciona localmente).
  */
 async function getsintetico(path, params = {}) {
+  const url = `${SINTETICO_BASE}${path}`;
+
+  // 1. Tenta com JWT relay (armazenado em /tmp/pacto-jwt.json)
+  try {
+    const relay = require('./pactoJwtRelay');
+    const relayJwt = relay.loadJwt();
+    if (relayJwt) {
+      const jwtResp = await axios.get(url, {
+        params,
+        timeout: 20000,
+        headers: {
+          'Authorization': `Bearer ${relayJwt}`,
+          'Content-Type': 'application/json',
+          'empresaId': String(EMPRESA_ID),
+          'unidadeId': String(UNIDADE_ID),
+        },
+        validateStatus: s => s < 500,
+      });
+      if (jwtResp.status === 200) return jwtResp;
+      if (jwtResp.status !== 404) {
+        console.warn('[PACTO-SESSION] Sintetico via JWT relay retornou', jwtResp.status);
+      }
+    }
+  } catch (_) {}
+
+  // 2. Fallback: JSESSIONID cookie
   const ok = await ensureSession();
   if (!ok) throw new Error(_session.lastError || 'Sem sessão PACTO');
 
-  const url = `${SINTETICO_BASE}${path}`;
   const response = await axios.get(url, {
     params,
     timeout: 20000,

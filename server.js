@@ -102,6 +102,21 @@ app.get('/api/config/status', (req, res) => {
   });
 });
 
+// JWT Relay — recebe JWT do app local e armazena no Vercel (sync key protegido)
+app.post('/jwt-relay', (req, res) => {
+  const key = req.headers['x-sync-key'] || req.query.key;
+  const SYNC_KEY = process.env.SYNC_KEY || '24hNorte_sync';
+  if (!key || key !== SYNC_KEY) return res.status(403).json({ error: 'Forbidden' });
+  const { jwt, expiresAt } = req.body || {};
+  if (!jwt || typeof jwt !== 'string' || !jwt.startsWith('eyJ')) {
+    return res.status(400).json({ error: 'JWT inválido' });
+  }
+  const relay = require('./src/integrations/pactoJwtRelay');
+  relay.saveJwt(jwt, expiresAt || null);
+  console.log('[JWT-RELAY] JWT recebido do app local e armazenado.');
+  res.json({ success: true, ts: new Date().toISOString() });
+});
+
 // Diagnóstico público (sync key) — força sync e mostra resultado
 app.get('/diag', async (req, res) => {
   const key = req.headers['x-sync-key'] || req.query.key;
