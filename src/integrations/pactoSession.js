@@ -12,11 +12,14 @@ const config = require('../config/apis');
 // URL base do PACTO — vem do env (lgn.pactosolucoes.com.br ou app.pactosolucoes.com.br)
 const _sinteticoBase = (config.pacto.sinteticoUrl || 'https://lgn.pactosolucoes.com.br/sintetico').replace(/\/$/, '');
 const _sinteticoHost = new URL(_sinteticoBase).origin; // ex: https://lgn.pactosolucoes.com.br
-const APP_URL    = _sinteticoHost;
+const APP_URL        = _sinteticoHost;
 const SINTETICO_BASE = `${_sinteticoBase}/prest`;
-const LOGIN_URL  = `${APP_URL}/login/`;
-const EMPRESA_ID = parseInt(config.pacto.empresaId || '4', 10);
-const UNIDADE_ID = parseInt(config.pacto.unidadeId || '4', 10);
+const LOGIN_URL      = `${APP_URL}/login/`;
+// Login JSF sempre em app.pactosolucoes.com.br (lgn não tem JSF)
+const JSF_LOGIN_URL  = 'https://app.pactosolucoes.com.br/login/';
+const JSF_APP_URL    = 'https://app.pactosolucoes.com.br';
+const EMPRESA_ID     = parseInt(config.pacto.empresaId || '4', 10);
+const UNIDADE_ID     = parseInt(config.pacto.unidadeId || '4', 10);
 
 // Estado da sessão em memória
 let _session = {
@@ -80,8 +83,8 @@ async function login() {
   console.log(`[PACTO-SESSION] Fazendo login automático... (tentativa ${_session.loginAttempts})`);
 
   try {
-    // Passo 1: GET /login/ → JSESSIONID + ViewState
-    const getResp = await http.get(LOGIN_URL, {
+    // Passo 1: GET /login/ na JSF → JSESSIONID + ViewState
+    const getResp = await http.get(JSF_LOGIN_URL, {
       headers: { 'Cookie': '' },
     });
 
@@ -111,14 +114,14 @@ async function login() {
       'fmLay:pwdLoginRecenteZW': pass,
     });
 
-    const postResp = await http.post(LOGIN_URL, body.toString(), {
+    const postResp = await http.post(JSF_LOGIN_URL, body.toString(), {
       headers: {
         'Cookie': `JSESSIONID=${jsessionid}`,
         'Content-Type': 'application/x-www-form-urlencoded',
         'Faces-Request': 'partial/ajax',
         'X-Requested-With': 'XMLHttpRequest',
-        'Referer': LOGIN_URL,
-        'Origin': APP_URL,
+        'Referer': JSF_LOGIN_URL,
+        'Origin': JSF_APP_URL,
         'Accept': 'application/xml, text/xml, */*; q=0.01',
       },
     });
@@ -142,8 +145,39 @@ async function login() {
       throw new Error(errMsg);
     }
 
-    // Passo 4: Verificação real — GET em página protegida para confirmar sessão ativa
-    const verifyResp = await http.get(`${APP_URL}/sintetico/`, {
+    // Passo 4: Tenta trocar JSESSIONID por JWT via /prest/session/{id}
+    // (endpoint descoberto no bundle Angular da lgn — não requer reCAPTCHA)
+    try {
+      const sessionExchangeResp = await axios.get(
+        `${JSF_APP_URL}/login/prest/session/${finalSession}`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Cookie': `JSESSIONID=${finalSession}`,
+          },
+          timeout: 10000,
+          validateStatus: s => s < 500,
+        }
+      );
+      const d = sessionExchangeResp.data || {};
+      // Formato: { token: "eyJ..." } ou { content: { token: "eyJ..." } }
+      const jwtFromSession = d.token || d.content?.token || d.jwt || d.access_token;
+      if (jwtFromSession && jwtFromSession.startsWith('eyJ')) {
+        const relay = require('./pactoJwtRelay');
+        relay.saveJwt(jwtFromSession, Date.now() + 90 * 60 * 1000);
+        console.log(`[PACTO-SESSION] JWT obtido via session exchange! (${jwtFromSession.length} chars)`);
+        _session.jsessionid = finalSession;
+        _session.loggedInAt = Date.now();
+        _session.expiresAt  = Date.now() + 2 * 60 * 60 * 1000;
+        _session.lastError  = null;
+        _session.loginAttempts = 0;
+        return true;
+      }
+    } catch (_) {}
+
+    // Passo 5: Verificação com JSESSIONID direto no sintetico
+    const verifyResp = await http.get(`${JSF_APP_URL}/sintetico/`, {
       headers: { 'Cookie': `JSESSIONID=${finalSession}` },
       maxRedirects: 0,
       validateStatus: s => s < 500,
@@ -160,7 +194,7 @@ async function login() {
     _session.lastError = null;
     _session.loginAttempts = 0;
 
-    console.log(`[PACTO-SESSION] Login OK. Sessão válida até ${new Date(_session.expiresAt).toLocaleTimeString('pt-BR')}`);
+    console.log(`[PACTO-SESSION] Login OK (JSESSIONID). Sessão válida até ${new Date(_session.expiresAt).toLocaleTimeString('pt-BR')}`);
     return true;
 
   } catch (err) {
@@ -291,7 +325,7 @@ async function getsintetico(path, params = {}) {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
     'Accept': 'application/json, text/plain, */*',
     'X-Requested-With': 'XMLHttpRequest',
-    'Referer': `${APP_URL}/sintetico/`,
+    'Referer': `${JSF_APP_URL}/sintetico/`,
   };
 
   const response = await axios.get(url, {

@@ -5,10 +5,14 @@
  * 1. CDP (Chrome DevTools Protocol): conecta ao Chrome já aberto pelo usuário
  *    na porta 9222 e extrai o JWT direto do localStorage — sem reCAPTCHA.
  *
- * 2. Puppeteer launch: abre Chrome headless com perfil clonado e faz login.
+ * 2. CDP Auto-Fill: se o Chrome estiver na tela de login, preenche os campos
+ *    automaticamente. O reCAPTCHA geralmente auto-valida em Chrome real com
+ *    perfil do usuário (conta Google ativa).
+ *
+ * 3. Puppeteer launch: abre Chrome headless com perfil clonado e faz login.
  *    Funciona se o Chrome reconhecer o usuário (cookies válidos).
  *
- * 3. Cache TTL: JWT extraído fica válido por 90 min sem novas tentativas.
+ * 4. Cache TTL: JWT extraído fica válido por 90 min sem novas tentativas.
  */
 
 const puppeteerExtra = require('puppeteer-extra');
@@ -37,6 +41,7 @@ function isJwtValid() {
 
 /**
  * Tenta extrair JWT do Chrome já aberto via CDP (porta 9222).
+ * Se não encontrar JWT, tenta auto-fill do formulário de login.
  * Retorna o JWT se encontrado, ou null.
  */
 async function tryExtractFromRunningChrome() {
@@ -80,22 +85,152 @@ async function tryExtractFromRunningChrome() {
       null
     );
 
-    await browser.disconnect();
-
-    if (jwt) {
+    if (jwt && jwt.startsWith('eyJ')) {
+      await browser.disconnect();
       console.log(`[HEADLESS] JWT extraído do Chrome aberto (${jwt.length} chars)`);
       const relay = require('./pactoJwtRelay');
       relay.storeAndRelay(jwt).catch(() => {});
       return jwt;
     }
 
-    // PACTO está aberto mas sem JWT — provavelmente está na tela de login
-    return null;
+    // PACTO está aberto mas sem JWT — tenta auto-fill do login
+    console.log('[HEADLESS] Sem JWT no localStorage. Tentando auto-fill do login...');
+    const autoJwt = await cdpAutoFillLogin(browser, page).catch(() => null);
+    await browser.disconnect();
+
+    if (autoJwt) {
+      console.log(`[HEADLESS] JWT obtido via auto-fill (${autoJwt.length} chars)`);
+      const relay = require('./pactoJwtRelay');
+      relay.storeAndRelay(autoJwt).catch(() => {});
+    }
+    return autoJwt;
 
   } catch (_) {
     // Chrome não está com porta de debug aberta — normal
     return null;
   }
+}
+
+/**
+ * Preenche automaticamente o formulário de login do PACTO via CDP.
+ * Funciona com o Chrome visível (real) — reCAPTCHA geralmente auto-valida.
+ * Retorna JWT se o login for bem-sucedido dentro do timeout.
+ */
+async function cdpAutoFillLogin(browser, page) {
+  const user  = process.env.PACTO_USER;
+  const pass  = process.env.PACTO_PASS;
+  if (!user || !pass) return null;
+
+  const currentUrl = page.url();
+
+  // Se não está na página de login, navegar para lá
+  if (!currentUrl.includes('app.pactosolucoes.com.br/login')) {
+    console.log(`[HEADLESS] Navegando para login JSF... (estava em ${currentUrl.slice(0, 60)})`);
+    await page.goto(LOGIN_URL, { waitUntil: 'networkidle2', timeout: 20000 });
+  }
+
+  // Verificar se campos de login estão presentes
+  const hasLoginForm = await page.evaluate(() =>
+    !!document.querySelector('[name="fmLay:usernameLoginZW"]')
+  ).catch(() => false);
+
+  if (!hasLoginForm) {
+    console.log('[HEADLESS] Formulário de login não encontrado na página atual.');
+    return null;
+  }
+
+  console.log('[HEADLESS] Preenchendo formulário de login via CDP...');
+
+  // Preencher chave
+  await page.evaluate((chave) => {
+    const el = document.querySelector('[name="fmLay:chave"]');
+    if (el) { el.focus(); el.value = chave; el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); }
+  }, CHAVE);
+
+  await new Promise(r => setTimeout(r, 500));
+
+  // Preencher usuário
+  await page.evaluate((username) => {
+    const el = document.querySelector('[name="fmLay:usernameLoginZW"]');
+    if (el) { el.focus(); el.value = username; el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); }
+  }, user);
+
+  await new Promise(r => setTimeout(r, 300));
+
+  // Preencher senha
+  await page.evaluate((password) => {
+    const el = document.querySelector('[name="fmLay:pwdLoginZW"]');
+    if (el) { el.focus(); el.value = password; el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); }
+  }, pass);
+
+  await new Promise(r => setTimeout(r, 500));
+
+  // Tentar clicar no reCAPTCHA (em Chrome real, frequentemente auto-valida)
+  try {
+    const recaptchaFrame = await page.$('iframe[src*="recaptcha"]');
+    if (recaptchaFrame) {
+      const frame = await recaptchaFrame.contentFrame();
+      if (frame) {
+        const anchor = await frame.$('#recaptcha-anchor');
+        if (anchor) {
+          await anchor.click();
+          console.log('[HEADLESS] reCAPTCHA clicado. Aguardando auto-validação (15s)...');
+          // Esperar validação — em Chrome real com conta Google, geralmente auto-valida
+          await new Promise(r => setTimeout(r, 15000));
+        }
+      }
+    }
+  } catch (_) {
+    console.log('[HEADLESS] reCAPTCHA não interativo — pode ser invisible v3.');
+    await new Promise(r => setTimeout(r, 2000));
+  }
+
+  // Clicar no botão Entrar
+  await page.evaluate(() => {
+    const btn = document.getElementById('fmLay:btnEntrar') ||
+                document.querySelector('button.ui-button[id*="btnEntrar"]') ||
+                document.querySelector('input[type="submit"]') ||
+                document.querySelector('button[type="submit"]');
+    if (btn) btn.click();
+  });
+  console.log('[HEADLESS] Botão Entrar clicado. Aguardando JWT (até 30s)...');
+
+  // Aguardar JWT aparecer no localStorage (dentro de 30s)
+  let jwt = null;
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const candidate = await page.evaluate(() =>
+        localStorage.getItem('apiToken') ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('access_token') ||
+        null
+      );
+      if (candidate && candidate.startsWith('eyJ')) {
+        jwt = candidate;
+        break;
+      }
+      // Também verifica se houve redirect para lgn (login bem-sucedido mas JWT em outra aba)
+      const url = page.url();
+      if (url.includes('lgn.pactosolucoes.com.br') && !url.includes('login')) {
+        // Está no dashboard — JWT deve estar no localStorage
+        const lgnjwt = await page.evaluate(() => localStorage.getItem('apiToken')).catch(() => null);
+        if (lgnjwt && lgnjwt.startsWith('eyJ')) { jwt = lgnjwt; break; }
+      }
+      // Verificar erro reCAPTCHA na página
+      const recaptchaError = await page.evaluate(() => {
+        const el = document.querySelector('.ui-growl-message, .ui-messages-error, .ui-messages-fatal');
+        return el ? el.innerText?.trim() : null;
+      }).catch(() => null);
+      if (recaptchaError && recaptchaError.includes('reCAPTCHA')) {
+        console.log('[HEADLESS] reCAPTCHA bloqueou o login automático. Usuário precisa resolver manualmente.');
+        break;
+      }
+    } catch (_) {}
+  }
+
+  return jwt;
 }
 
 /**
