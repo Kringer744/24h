@@ -107,58 +107,31 @@ async function runSync() {
 
     // ── 3. Consolidação Final
     const cached = cache.get('stats') || {};
-    // A API sintetico retorna movimentação como { table: {...} } — normaliza para flat
-    const mdRaw = movData || {};
-    const md    = mdRaw.table || mdRaw; // suporte a ambos os formatos
-    const fd    = finData || {};
 
-    // DEFINIÇÃO DAS VARIÁVEIS ANTES DO USO NO OBJETO 'det'
-    const matriculadosMesFromMS   = msData?.matriculadosMes;
-    const canceladosMesFromMS      = msData?.cancelamentosMes;
-    const rematriculadosMesFromMS = msData?.rematriculadosMes;
-
-    const det = {
-      matriculadosHoje:   md.matriculadosHoje   ?? 0,
-      matriculadosMes:    matriculadosMesFromMS ?? md.matriculadosMes ?? 0,
-      rematriculadosHoje: md.rematriculadosHoje ?? 0,
-      rematriculadosMes:  rematriculadosMesFromMS  ?? md.rematriculadosMes ?? 0,
-      canceladosHoje:     md.canceladosHoje     ?? 0,
-      canceladosMes:      canceladosMesFromMS      ?? md.canceladosMes    ?? 0,
-      desistenciaHoje:    md.desistenciaHoje    ?? 0,
-      desistenciaMes:     md.desistenciaMes     ?? 0,
-    };
-
-    const ativos        = ativosData?.total     || msData?.ativos || cached.ativos || 0;
-    const checkinsHoje  = ativosData?.checkinsHoje || msData?.checkinsHoje || 0;
-    const inadimplentes = msData?.inadimplentes || md.inadimplentes || cached.inadimplentes || 0;
-    const receita       = msData?.receitaMes    || fd.receitaMes    || fd.totalReceita || cached.receita || 0;
-    const aReceber      = msData?.aReceber      || fd.aReceber      || cached.aReceber || 0;
-    const renovacoes30d = msData?.renovacoes30d || ativosData?.renovacoes30d || md.renovacoes30d || md.renovacoesMes || cached.renovacoes30d || 0;
-    const vencidos      = msData?.vencidos      || ativosData?.vencidos      || md.contratosVencidos || md.vencidos || cached.vencidos || 0;
-    const agregadores   = msData?.agregadores   || ativosData?.agregadores   || md.clientesAgregadores || md.agregadores || md.dependentes || cached.agregadores || 0;
+    const ativos       = ativosData?.total        || msData?.ativos       || cached.ativos       || 0;
+    const checkinsHoje = ativosData?.checkinsHoje  || msData?.checkinsHoje || cached.checkinsHoje || 0;
+    const receita      = msData?.receitaMes        || cached.receita       || 0;
+    const aReceber     = msData?.aReceber          || cached.aReceber      || 0;
+    const faturamento  = msData?.faturamento       || cached.faturamento   || 0;
+    const despesas     = msData?.despesas          || cached.despesas      || 0;
+    const ticketMedio  = msData?.ticketMedio       || cached.ticketMedio   || 0;
+    const novosMes     = msData?.novosMes          || ativosData?.matriculadosMes || cached.novosMes || 0;
+    const semCheckin7  = msData?.semCheckin7       || cached.semCheckin7   || 0;
+    const semCheckin30 = msData?.semCheckin30      || cached.semCheckin30  || 0;
+    const semCheckin60 = msData?.semCheckin60      || cached.semCheckin60  || 0;
 
     const stats = {
       ativos,
       checkinsHoje,
-      inadimplentes,
       receita,
       aReceber,
-      renovacoes30d,
-      vencidos,
-      agregadores,
-      novasVendas:   det.matriculadosMes + det.rematriculadosMes,
-      cancelamentos: det.canceladosMes + det.desistenciaMes,
-      totalAlunos:   ativos, // simplificando
-      
-      // Funil
-      funil: {
-        lead:     Math.floor((msData?.leadsAtivos || 0) * 0.4),
-        contato:  Math.floor((msData?.leadsAtivos || 0) * 0.3),
-        visita:   Math.floor((msData?.leadsAtivos || 0) * 0.2),
-        proposta: Math.floor((msData?.leadsAtivos || 0) * 0.1),
-        fechado:  det.matriculadosMes + det.rematriculadosMes,
-      },
-      
+      faturamento,
+      despesas,
+      ticketMedio,
+      novosMes,
+      semCheckin7,
+      semCheckin30,
+      semCheckin60,
       _syncedAt: new Date().toISOString(),
       _isAuto:   true,
     };
@@ -183,7 +156,6 @@ async function runSync() {
           stats,
           checkins: ativosData?.checkinsLista?.slice(0, 20) || [],
           alunos:   ativosData?.items || [],
-          _raw:     { movimentacao: md, financeiro: fd },
         };
         axios.post(`${url}/data-relay`, payload, {
           headers: { 'x-sync-key': syncKey, 'Content-Type': 'application/json' },

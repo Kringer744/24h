@@ -986,42 +986,32 @@
         <div class="hero-value" id="kpiAtivos">—</div>
         <div class="hero-sub">contratos vigentes</div>
       </div>
-      <div class="hero-card yellow">
-        <i data-lucide="alert-triangle" class="hero-icon"></i>
-        <div class="hero-label"><i data-lucide="alert-triangle" style="width:12px;height:12px"></i> Inadimplentes</div>
-        <div class="hero-value" id="kpiInadimplentes">—</div>
-        <div class="hero-sub">pagamentos em atraso</div>
-      </div>
       <div class="hero-card blue">
         <i data-lucide="dollar-sign" class="hero-icon"></i>
         <div class="hero-label"><i data-lucide="dollar-sign" style="width:12px;height:12px"></i> Receita do Mês</div>
         <div class="hero-value" id="kpiReceita">—</div>
-        <div class="hero-sub">faturamento total</div>
+        <div class="hero-sub">efetivamente recebido</div>
+      </div>
+      <div class="hero-card cyan">
+        <i data-lucide="credit-card" class="hero-icon"></i>
+        <div class="hero-label"><i data-lucide="credit-card" style="width:12px;height:12px"></i> A Receber</div>
+        <div class="hero-value" id="kpiInadimplentes">—</div>
+        <div class="hero-sub">saldo em aberto</div>
       </div>
       <div class="hero-card green" id="cardSaldo">
-        <i data-lucide="trending-up" class="hero-icon"></i>
-        <div class="hero-label"><i data-lucide="trending-up" style="width:12px;height:12px"></i> Saldo do Mês</div>
+        <i data-lucide="file-text" class="hero-icon"></i>
+        <div class="hero-label"><i data-lucide="file-text" style="width:12px;height:12px"></i> Faturamento Mês</div>
         <div class="hero-value" id="kpiSaldo">—</div>
-        <div class="hero-sub">entradas vs saídas</div>
+        <div class="hero-sub">boletos emitidos</div>
       </div>
     </div>
 
     <!-- ── Secondary KPI Grid ────────────────────────────────────────── -->
     <div class="kpi-grid" id="kpiGrid">
       <div class="kpi-card blue">
-        <div class="kpi-label">Novas Vendas</div>
+        <div class="kpi-label">Novos Alunos (mês)</div>
         <div class="kpi-value" id="kpiVendas">—</div>
-        <div class="kpi-sub">matrículas + rematric.</div>
-      </div>
-      <div class="kpi-card red">
-        <div class="kpi-label">Perda de Alunos</div>
-        <div class="kpi-value" id="kpiCancelados">—</div>
-        <div class="kpi-sub">cancelados + desis.</div>
-      </div>
-      <div class="kpi-card purple">
-        <div class="kpi-label">Renovações (30d)</div>
-        <div class="kpi-value" id="kpiRenovacoes">—</div>
-        <div class="kpi-sub">a vencer</div>
+        <div class="kpi-sub">matrículas no mês</div>
       </div>
       <div class="kpi-card cyan">
         <div class="kpi-label">Check-ins Hoje</div>
@@ -1034,19 +1024,29 @@
         <div class="kpi-sub">oportunidades ativas</div>
       </div>
       <div class="kpi-card green">
-        <div class="kpi-label">Total Geral</div>
+        <div class="kpi-label">Ticket Médio</div>
         <div class="kpi-value" id="kpiTotal">—</div>
-        <div class="kpi-sub">alunos + dependentes</div>
+        <div class="kpi-sub">receita ÷ ativos</div>
+      </div>
+      <div class="kpi-card yellow">
+        <div class="kpi-label">Sem Treinar (7d)</div>
+        <div class="kpi-value" id="kpiCancelados">—</div>
+        <div class="kpi-sub">risco leve de churn</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-label">Sem Treinar (30d)</div>
+        <div class="kpi-value" id="kpiRenovacoes">—</div>
+        <div class="kpi-sub">risco médio de churn</div>
       </div>
       <div class="kpi-card red">
-        <div class="kpi-label">Vencidos</div>
+        <div class="kpi-label">Alto Risco (60d)</div>
         <div class="kpi-value" id="kpiVencidos">—</div>
-        <div class="kpi-sub">contratos encerrados</div>
+        <div class="kpi-sub">prestes a cancelar</div>
       </div>
       <div class="kpi-card purple">
-        <div class="kpi-label">Dependentes</div>
+        <div class="kpi-label">Despesas do Mês</div>
         <div class="kpi-value" id="kpiAgregadores">—</div>
-        <div class="kpi-sub">vínculos secundários</div>
+        <div class="kpi-sub">saídas no período</div>
       </div>
     </div>
 
@@ -1916,22 +1916,22 @@ async function refreshDashboard() {
       dashData = d;
 
       // ── KPIs Dashboard ───────────────────────────────────
-      setKpi('kpiAtivos',        d.ativos       ?? '—');
-      setKpi('kpiAgregadores',   d.agregadores  ?? '—');
-      setKpi('kpiTotal',         d.totalAlunos  ?? '—');
-      setKpi('kpiVencidos',      d.vencidos     ?? '—');
-      setKpi('kpiVendas',        d.novasVendas  ?? '—');
-      setKpi('kpiCancelados',    d.cancelamentos ?? '—');
-      setKpi('kpiInadimplentes', d.inadimplentes ?? '—');
-      setKpi('kpiLeads',         d.oportunidadesAtivas ?? 0);
-      setKpi('kpiRenovacoes',    d.renovacoes30d ?? '—');
-      setKpi('kpiCheckins',      d.checkinsHoje ?? '—');
+      setKpi('kpiAtivos',        d.ativos         ?? '—');
       setKpi('kpiReceita',       fmtMoeda(d.receita));
+      setKpi('kpiInadimplentes', fmtMoeda(d.aReceber));   // A Receber
+      setKpi('kpiVendas',        d.novosMes       ?? '—'); // Novos alunos mês
+      setKpi('kpiCheckins',      d.checkinsHoje   ?? '—');
+      setKpi('kpiLeads',         d.oportunidadesAtivas ?? 0);
+      setKpi('kpiTotal',         d.ticketMedio != null ? fmtMoeda(d.ticketMedio) : '—'); // Ticket médio
+      setKpi('kpiCancelados',    d.semCheckin7    ?? '—'); // Sem treinar 7d
+      setKpi('kpiRenovacoes',    d.semCheckin30   ?? '—'); // Sem treinar 30d
+      setKpi('kpiVencidos',      d.semCheckin60   ?? '—'); // Alto risco 60d
+      setKpi('kpiAgregadores',   fmtMoeda(d.despesas));    // Despesas mês
 
-      const saldo = (d.novasVendas || 0) - (d.cancelamentos || 0);
+      // Faturamento no hero card "Saldo"
       const cardSaldo = document.getElementById('cardSaldo');
-      if (cardSaldo) cardSaldo.className = 'kpi-card ' + (saldo >= 0 ? 'green' : 'red');
-      setKpi('kpiSaldo', (saldo > 0 ? '+' : '') + saldo);
+      if (cardSaldo) cardSaldo.className = 'hero-card green';
+      setKpi('kpiSaldo', fmtMoeda(d.faturamento));
 
       // ── KPIs Financeiro (preenche já se disponível) ──────
       setKpi('finReceita', fmtMoeda(d.receita));

@@ -81,29 +81,27 @@ async function getContratosAtivos() {
       return a === ano && m === mes;
     }).length;
 
-    // Contratos vencendo nos próximos 30 dias e já vencidos (derivado de fimContrato)
+    // Alunos em risco de churn — sem check-in há X dias (campo ultimoAcesso: "dd/mm/yyyy HH:MM")
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
-    const limite30 = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000);
-    let renovacoes30d = 0;
-    let vencidos = 0;
-    let agregadores = 0;
+    const parseUltAcesso = s => {
+      if (!s) return null;
+      const [dd, mm, aaHH] = s.split('/');
+      const aa = aaHH?.split(' ')[0];
+      return (dd && mm && aa) ? new Date(+aa, +mm - 1, +dd) : null;
+    };
+    const lim7  = new Date(hoje - 7  * 864e5);
+    const lim30 = new Date(hoje - 30 * 864e5);
+    const lim60 = new Date(hoje - 60 * 864e5);
+    let semCheckin7 = 0, semCheckin30 = 0, semCheckin60 = 0;
     clientes.forEach(c => {
-      // Vencidos / renovações
-      const fim = parseDate(c.fimContrato || c.dataFimContrato || c.vencimento);
-      if (fim && !isNaN(fim)) {
-        if (fim < hoje) vencidos++;
-        else if (fim <= limite30) renovacoes30d++;
-      }
-      // Dependentes / agregadores
-      const tipo = (c.tipo || c.tipoContrato || '').toString().toUpperCase();
-      if (tipo === 'DEP' || tipo === 'DEPENDENTE' || tipo === 'AGR' || tipo === 'AGREGADOR'
-          || c.dependente === true || c.agregador === true || c.clienteAgregador === true) {
-        agregadores++;
-      }
+      const d = parseUltAcesso(c.ultimoAcesso);
+      if (!d || d < lim7)  semCheckin7++;
+      if (!d || d < lim30) semCheckin30++;
+      if (!d || d < lim60) semCheckin60++;
     });
 
-    console.log(`[PACTO] Ativos: ${clientes.length} | Renov30d: ${renovacoes30d} | Vencidos: ${vencidos} | Agreg: ${agregadores}`);
+    console.log(`[PACTO] Ativos: ${clientes.length} | Risco7d: ${semCheckin7} | Risco30d: ${semCheckin30} | Risco60d: ${semCheckin60}`);
 
     return {
       total:          clientes.length,
@@ -111,9 +109,9 @@ async function getContratosAtivos() {
       checkinsHoje:   checkinsLista.length,
       checkinsLista,
       matriculadosMes,
-      renovacoes30d,
-      vencidos,
-      agregadores,
+      semCheckin7,
+      semCheckin30,
+      semCheckin60,
     };
   } catch (err) {
     console.error('[PACTO] Erro ao buscar contratos ativos:', err.message);
@@ -140,7 +138,7 @@ async function getFinanceiroMS() {
     return {
       receitaMes:       c.contasReceberPorDataQuitacao || c.faturamentoPorDataLancamento || c.totalReceita || 0,
       aReceber:         c.recebiveis                  || c.contasReceberPorDataLancamento || 0,
-      faturamento:      c.totalFaturamento             || 0,
+      faturamento:      c.faturamentoPorDataLancamento  || 0,
       despesas:         c.totalDespesa                 || 0,
     };
   } catch (err) {
@@ -173,20 +171,20 @@ async function getSintetico() {
     getContratosCount('REMATRICULADO', mesInicio, hoje).catch(() => 0),
   ]);
 
+  const ticketMedio = ativosRes.total > 0 ? Math.round(fin.receitaMes / ativosRes.total) : 0;
+
   return {
     ativos:           ativosRes.total,
-    inadimplentes:    inad.length || ativosRes.vencidos || 0,
     receitaMes:       fin.receitaMes,
     aReceber:         fin.aReceber,
     faturamento:      fin.faturamento,
     despesas:         fin.despesas,
+    ticketMedio,
     checkinsHoje:     ativosRes.checkinsHoje,
-    matriculadosMes:  matriculas || ativosRes.matriculadosMes || 0,
-    cancelamentosMes: cancelados,
-    rematriculadosMes: renovados,
-    renovacoes30d:    ativosRes.renovacoes30d || 0,
-    vencidos:         ativosRes.vencidos      || 0,
-    agregadores:      ativosRes.agregadores   || 0,
+    novosMes:         ativosRes.matriculadosMes || 0,
+    semCheckin7:      ativosRes.semCheckin7  || 0,
+    semCheckin30:     ativosRes.semCheckin30 || 0,
+    semCheckin60:     ativosRes.semCheckin60 || 0,
     _source: 'pacto-ms-api'
   };
 }
