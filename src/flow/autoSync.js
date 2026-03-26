@@ -88,6 +88,9 @@ async function runSync() {
     const inadimplentes = msData?.inadimplentes || md.inadimplentes || cached.inadimplentes || 0;
     const receita       = msData?.receitaMes    || fd.receitaMes    || cached.receita || 0;
     const aReceber      = msData?.aReceber      || fd.aReceber      || cached.aReceber || 0;
+    const renovacoes30d = msData?.renovacoes30d || ativosData?.renovacoes30d || cached.renovacoes30d || 0;
+    const vencidos      = msData?.vencidos      || ativosData?.vencidos      || cached.vencidos      || 0;
+    const agregadores   = msData?.agregadores   || ativosData?.agregadores   || cached.agregadores   || 0;
 
     const stats = {
       ativos,
@@ -95,6 +98,9 @@ async function runSync() {
       inadimplentes,
       receita,
       aReceber,
+      renovacoes30d,
+      vencidos,
+      agregadores,
       novasVendas:   det.matriculadosMes + det.rematriculadosMes,
       cancelamentos: det.canceladosMes + det.desistenciaMes,
       totalAlunos:   ativos, // simplificando

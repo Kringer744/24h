@@ -68,25 +68,30 @@ app.post('/api/config/pacto-credentials', async (req, res) => {
   }
 
   try {
-    const envPath = path.join(__dirname, '.env');
-    let envContent = '';
-    if (fs.existsSync(envPath)) {
-      envContent = fs.readFileSync(envPath, 'utf8');
-    }
-
-    const update = (content, key, value) => {
-      const regex = new RegExp(`^${key}=.*$`, 'm');
-      return regex.test(content)
-        ? content.replace(regex, `${key}=${value}`)
-        : content + `\n${key}=${value}`;
-    };
-
-    envContent = update(envContent, 'PACTO_USER', pactoUser);
-    envContent = update(envContent, 'PACTO_PASS', pactoPass);
-    fs.writeFileSync(envPath, envContent, 'utf8');
-
+    // Atualiza em memória imediatamente (funciona em qualquer ambiente)
     process.env.PACTO_USER = pactoUser;
     process.env.PACTO_PASS = pactoPass;
+
+    // No Vercel /var/task é read-only — persiste em /tmp; localmente usa .env
+    const isVercel = !!process.env.VERCEL;
+    if (isVercel) {
+      // Salva em /tmp para que instâncias quentes reutilizem as credenciais
+      const tmpEnv = path.join('/tmp', '.env-runtime');
+      fs.writeFileSync(tmpEnv, `PACTO_USER=${pactoUser}\nPACTO_PASS=${pactoPass}\n`, 'utf8');
+    } else {
+      const envPath = path.join(__dirname, '.env');
+      let envContent = '';
+      if (fs.existsSync(envPath)) envContent = fs.readFileSync(envPath, 'utf8');
+      const update = (content, key, value) => {
+        const regex = new RegExp(`^${key}=.*$`, 'm');
+        return regex.test(content)
+          ? content.replace(regex, `${key}=${value}`)
+          : content + `\n${key}=${value}`;
+      };
+      envContent = update(envContent, 'PACTO_USER', pactoUser);
+      envContent = update(envContent, 'PACTO_PASS', pactoPass);
+      fs.writeFileSync(envPath, envContent, 'utf8');
+    }
 
     const autoSync = require('./src/flow/autoSync');
     autoSync.runSync().catch(() => {});

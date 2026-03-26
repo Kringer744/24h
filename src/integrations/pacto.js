@@ -60,9 +60,17 @@ async function getContratosAtivos() {
 
     const clientes = res.data?.content?.clientes || res.data?.clientes || (Array.isArray(res.data) ? res.data : []);
 
+    // Helper: parse dd/mm/yyyy or ISO date string → Date object
+    const parseDate = (str) => {
+      if (!str) return null;
+      const parts = str.split('/');
+      if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      return new Date(str);
+    };
+
     // Checkins de hoje: clientes cujo ultimoAcesso é hoje
-    const hoje = new Date().toISOString().split('T')[0]; // "2026-03-26"
-    const checkinsLista = clientes.filter(c => c.ultimoAcesso && c.ultimoAcesso.startsWith(hoje.split('-').reverse().join('/')));
+    const hojeISO = new Date().toISOString().split('T')[0]; // "2026-03-26"
+    const checkinsLista = clientes.filter(c => c.ultimoAcesso && c.ultimoAcesso.startsWith(hojeISO.split('-').reverse().join('/')));
 
     // Matriculados este mês
     const mesAtual = new Date().toISOString().slice(0, 7); // "2026-03"
@@ -73,7 +81,29 @@ async function getContratosAtivos() {
       return a === ano && m === mes;
     }).length;
 
-    console.log(`[PACTO] Ativos via /psec/clientes/ativos: ${clientes.length}`);
+    // Contratos vencendo nos próximos 30 dias e já vencidos (derivado de fimContrato)
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const limite30 = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000);
+    let renovacoes30d = 0;
+    let vencidos = 0;
+    let agregadores = 0;
+    clientes.forEach(c => {
+      // Vencidos / renovações
+      const fim = parseDate(c.fimContrato || c.dataFimContrato || c.vencimento);
+      if (fim && !isNaN(fim)) {
+        if (fim < hoje) vencidos++;
+        else if (fim <= limite30) renovacoes30d++;
+      }
+      // Dependentes / agregadores
+      const tipo = (c.tipo || c.tipoContrato || '').toString().toUpperCase();
+      if (tipo === 'DEP' || tipo === 'DEPENDENTE' || tipo === 'AGR' || tipo === 'AGREGADOR'
+          || c.dependente === true || c.agregador === true || c.clienteAgregador === true) {
+        agregadores++;
+      }
+    });
+
+    console.log(`[PACTO] Ativos: ${clientes.length} | Renov30d: ${renovacoes30d} | Vencidos: ${vencidos} | Agreg: ${agregadores}`);
 
     return {
       total:          clientes.length,
@@ -81,6 +111,9 @@ async function getContratosAtivos() {
       checkinsHoje:   checkinsLista.length,
       checkinsLista,
       matriculadosMes,
+      renovacoes30d,
+      vencidos,
+      agregadores,
     };
   } catch (err) {
     console.error('[PACTO] Erro ao buscar contratos ativos:', err.message);
@@ -133,14 +166,17 @@ async function getSintetico() {
   ]);
 
   return {
-    ativos: ativosRes.total,
-    inadimplentes: inad.length,
-    receitaMes: fin.receitaMes,
-    aReceber: fin.aReceber,
-    checkinsHoje: ativosRes.checkinsHoje,
-    matriculadosMes: matriculas,
+    ativos:           ativosRes.total,
+    inadimplentes:    inad.length || ativosRes.vencidos || 0,
+    receitaMes:       fin.receitaMes,
+    aReceber:         fin.aReceber,
+    checkinsHoje:     ativosRes.checkinsHoje,
+    matriculadosMes:  matriculas || ativosRes.matriculadosMes || 0,
     cancelamentosMes: cancelados,
     rematriculadosMes: renovados,
+    renovacoes30d:    ativosRes.renovacoes30d || 0,
+    vencidos:         ativosRes.vencidos      || 0,
+    agregadores:      ativosRes.agregadores   || 0,
     _source: 'pacto-ms-api'
   };
 }
