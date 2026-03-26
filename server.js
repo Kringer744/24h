@@ -195,6 +195,25 @@ app.get('/api/cron/sync', async (req, res) => {
   }
 });
 
+// Teste público da API PACTO a partir do Vercel (sem auth — debug temporário)
+app.get('/api/test-pacto', async (req, res) => {
+  const axios = require('axios');
+  const KEY = process.env.PACTO_API_KEY;
+  const GW  = process.env.PACTO_GATEWAY_URL || 'https://apigw.pactosolucoes.com.br';
+  const EID = process.env.PACTO_EMPRESA_ID  || '4';
+  const mes = new Date().toISOString().slice(0, 7);
+  try {
+    const r = await axios.get(`${GW}/v1/bi/resumo`, {
+      params: { mesInicial: mes, mesFinal: mes },
+      headers: { Authorization: `Bearer ${KEY}`, empresaId: EID },
+      timeout: 10000,
+    });
+    res.json({ ok: true, status: r.status, data: r.data?.content?.[0] || r.data });
+  } catch (e) {
+    res.json({ ok: false, status: e.response?.status, error: e.message, code: e.code });
+  }
+});
+
 // Warmup manual (força sync imediato sem autenticacao — chamado pelo bookmarklet)
 app.post('/api/warmup', async (req, res) => {
   const key = req.headers['x-sync-key'] || req.query.key;
