@@ -51,10 +51,11 @@ async function _doSync() {
       if (!ativosData) try { ativosData = await pacto.getContratosAtivos(); } catch (_) {}
     }
 
-    // ── 2. Dados via sintetico (headless login com JWT) ───────────────────────
+    // ── 2. Variáveis de dados
     let movData = null;
     let finData = null;
     let leadsData = null;
+    let msData = null;
     let fallbackData = {}; // fallbacks via API key
 
     const hoje = new Date().toISOString().split('T')[0];
@@ -78,76 +79,26 @@ async function _doSync() {
 
     const hasCredentials = !!(process.env.PACTO_USER && process.env.PACTO_PASS);
 
-    if (hasCredentials && !pactoHeadless && pactoSession) {
-      // Vercel / sem Chrome: usa sessão HTTP direto
-      console.log('[AUTO-SYNC] Modo HTTP session (sem puppeteer)...');
-      const sessionOk = await pactoSession.ensureSession().catch(() => false);
-      if (sessionOk) {
-        const [movRes, finRes, leadsRes] = await Promise.allSettled([
-          pactoSession.getMovimentacao(),
-          pactoSession.getFinanceiro(),
-          pactoSession.getLeadsCrm(),
-        ]);
-        movData   = movRes.status  === 'fulfilled' ? movRes.value  : null;
-        finData   = finRes.status  === 'fulfilled' ? finRes.value  : null;
-        leadsData = leadsRes.status === 'fulfilled' ? leadsRes.value : null;
-        if (movData) console.log('[AUTO-SYNC] Movimentação OK (session HTTP)');
-        if (finData) console.log('[AUTO-SYNC] Financeiro OK (session HTTP)');
-      } else {
-        console.warn('[AUTO-SYNC] Login HTTP falhou — apenas dados da API key.');
-      }
-    } else if (hasCredentials && pactoHeadless) {
+    try {
+      console.log('[AUTO-SYNC] Buscando dados via Microserviços PACTO...');
+      msData = await pacto.getSintetico();
+    } catch (e) {
+      console.warn('[AUTO-SYNC] Erro ao buscar dados via MS:', e.message);
+    }
+    
+    // Se não estivemos no Vercel e tivermos credenciais, ainda podemos tentar o sintetico legado para dados extras
+    if (!process.env.VERCEL && hasCredentials && pactoHeadless) {
       try {
-        // Garante JWT válido (faz login headless se necessário)
         await pactoHeadless.ensureJwt();
-
-        const [movRes, finRes, leadsRes, inadListRes] = await Promise.allSettled([
+        const [movRes, finRes, leadsRes] = await Promise.allSettled([
           pactoHeadless.getMovimentacao(),
           pactoHeadless.getFinanceiro(),
-          pactoSession.getLeadsCrm(),        // leads via API key (não precisa de JWT)
-          pactoHeadless.getInadimplentesLista(),
+          pactoSession.getLeadsCrm(),
         ]);
-
-        movData  = movRes.status  === 'fulfilled' ? movRes.value  : null;
-        finData  = finRes.status  === 'fulfilled' ? finRes.value  : null;
+        movData = movRes.status === 'fulfilled' ? movRes.value : null;
+        finData = finRes.status === 'fulfilled' ? finRes.value : null;
         leadsData = leadsRes.status === 'fulfilled' ? leadsRes.value : null;
-
-        const inadList = inadListRes.status === 'fulfilled' ? inadListRes.value : null;
-        if (inadList?.length > 0) {
-          cache.set('inadimplentes_lista', { items: inadList, total: inadList.length });
-          inadimplentesData = inadList;
-          console.log(`[AUTO-SYNC] Inadimplentes via headless: ${inadList.length}`);
-        } else if (inadListRes.status === 'rejected') {
-          console.warn('[AUTO-SYNC] Inadimplentes headless falhou:', inadListRes.reason?.message);
-        }
-
-        if (movData)  console.log('[AUTO-SYNC] Movimentação OK:', JSON.stringify(movData).slice(0, 120));
-        else console.warn('[AUTO-SYNC] Movimentação falhou:', movRes.reason?.message);
-        if (finData)  console.log('[AUTO-SYNC] Financeiro OK:', JSON.stringify(finData).slice(0, 120));
-        else console.warn('[AUTO-SYNC] Financeiro falhou:', finRes.reason?.message);
-
-      } catch (headlessErr) {
-        console.warn('[AUTO-SYNC] Login headless falhou, tentando sessão JSF...', headlessErr.message);
-
-        // Fallback: sessão JSF (pode falhar com reCAPTCHA)
-        const sessionOk = pactoSession
-          ? await pactoSession.ensureSession().catch(() => false)
-          : false;
-        if (sessionOk) {
-          const [movRes, finRes, leadsRes] = await Promise.allSettled([
-            pactoSession.getMovimentacao(),
-            pactoSession.getFinanceiro(),
-            pactoSession.getLeadsCrm(),
-          ]);
-          movData   = movRes.status  === 'fulfilled' ? movRes.value  : null;
-          finData   = finRes.status  === 'fulfilled' ? finRes.value  : null;
-          leadsData = leadsRes.status === 'fulfilled' ? leadsRes.value : null;
-        } else {
-          console.warn('[AUTO-SYNC] Sem sessão disponível — apenas dados da API key.');
-        }
-      }
-    } else {
-      console.warn('[AUTO-SYNC] Sem credenciais PACTO — apenas dados da API key disponíveis.');
+      } catch (_) {}
     }
 
     // ── 3. Montar stats consolidados ──────────────────────────────────────────
@@ -165,7 +116,7 @@ async function _doSync() {
 
     const det = {
       matriculadosHoje:   md.matriculadosHoje   ?? md.matriculado ?? 0,
-      matriculadosMes:    md.matriculadosMes    ?? md.matriculadoAteHoje ?? md.novasMatriculas ?? fallbackData.matriculadosMes ?? 0,
+      matriculadosMes:    matriculadosMesFromMS ?? md.matriculadosMes ?? md.matriculadoAteHoje ?? md.novasMatriculas ?? fallbackData.matriculadosMes ?? 0,
       rematriculadosHoje: md.rematriculadosHoje ?? 0,
       rematriculadosMes:  md.rematriculadosMes  ?? md.renovacoes ?? fallbackData.rematriculadosMes ?? 0,
       canceladosHoje:     md.canceladosHoje     ?? md.cancelado ?? 0,
@@ -178,12 +129,13 @@ async function _doSync() {
 
     const agregadores   = md.clientesAgregadores ?? md.agregadores ?? md.dependentes ?? cached.agregadores;
     const vencidos      = md.contratosVencidos   ?? md.vencidos   ?? cached.vencidos;
-    const inadimplentes = md.inadimplentes ?? md.totalInadimplentes ??
+    const inadimplentes = msData?.inadimplentes ?? md.inadimplentes ?? md.totalInadimplentes ??
       (inadimplentesData?.length > 0 ? inadimplentesData.length : undefined) ?? cached.inadimplentes;
-    const renovacoes30d = md.renovacoes30d       ?? md.renovacoesMes ?? cached.renovacoes30d;
-    const leadsAtivos   = leadsData?.totalElements ?? leadsData?.total ?? cached.leadsAtivos;
-    const receita       = fd.receitaMes ?? fd.totalReceita ?? fd.receita ?? cached.receita;
-    const aReceber      = fd.aReceber ?? fd.totalAReceber ?? cached.aReceber;
+    const renovacoes30d = msData?.renovacoes30d ?? md.renovacoes30d ?? md.renovacoesMes ?? cached.renovacoes30d;
+    const leadsAtivos   = leadsData?.totalElements ?? leadsData?.total ?? msData?.leadsAtivos ?? cached.leadsAtivos;
+    const receita       = msData?.receitaMes ?? fd.receitaMes ?? fd.totalReceita ?? fd.receita ?? cached.receita;
+    const aReceber      = msData?.aReceber ?? fd.aReceber ?? fd.totalAReceber ?? cached.aReceber;
+    const matriculadosMesFromMS = msData?.matriculadosMes;
 
     const novasVendas   = det.matriculadosMes + det.rematriculadosMes || cached.novasVendas || 0;
     const cancelamentos = det.canceladosMes + det.desistenciaMes || cached.cancelamentos || 0;

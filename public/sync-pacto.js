@@ -1,100 +1,110 @@
 /**
- * 24H NORTE — Sync Script para PACTO
- *
- * Cole este código no console do browser enquanto estiver logado no PACTO
- * para enviar dados ao dashboard.
- *
- * Uso:
- *   1. Abra o console do browser no PACTO (F12 → Console)
- *   2. Cole e pressione Enter
- *   3. Aguarde "✅ Sync completo"
+ * 24H NORTE — Super Sync Script (Versão Completa)
+ * 
+ * Este script captura TUDO: Ativos, Financeiro, Inadimplentes e Movimentação.
+ * Como ele roda no seu navegador logado, ele pula as barreiras de segurança do Vercel.
  */
 
-(async function SYNC_24H_NORTE() {
-  const ZW     = 'https://zw815.pactosolucoes.com.br';
+(async function SUPER_SYNC_24H_NORTE() {
   const SERVER = 'https://24h-nine.vercel.app';
   const SYNC_KEY = '24hNorte_sync';
   const EMPRESA = 4;
-  const UNIDADE = 4; // 24H NORTE
-
-  async function zw(path) {
-    const r = await fetch(`${ZW}${path}`, { credentials: 'include' });
-    if (!r.ok) return null;
-    return r.json().catch(() => null);
-  }
-
-  console.log('🔄 Iniciando sync 24H NORTE...');
+  const UNIDADE = 4;
 
   const hoje = new Date().toISOString().split('T')[0];
-  const mesInicio = hoje.substring(0, 7) + '-01';
+  const mes = hoje.substring(0, 7);
+  const mesInicio = mes + '-01';
 
-  // Fetch data in parallel
-  const [contratos, cancelados, checkins, leads, financeiro] = await Promise.allSettled([
-    zw(`/adm-core-ms/v1/contratos?empresa=${EMPRESA}&unidade=${UNIDADE}&situacao=ATIVO&size=1`),
-    zw(`/adm-core-ms/v1/contratos?empresa=${EMPRESA}&unidade=${UNIDADE}&situacao=CANCELADO&size=1&dataDe=${mesInicio}&dataAte=${hoje}`),
-    zw(`/adm-core-ms/v1/acessos?empresa=${EMPRESA}&unidade=${UNIDADE}&data=${hoje}`),
-    zw(`/crm-ms/v1/leads?empresa=${EMPRESA}&unidade=${UNIDADE}&situacao=ABERTO&size=1`),
-    zw(`/financeiro-ms/v1/receitas?empresa=${EMPRESA}&unidade=${UNIDADE}&mesAno=${hoje.substring(0,7)}`),
+  async function fetchPacto(url) {
+    try {
+      const r = await fetch(url, { credentials: 'include' });
+      return r.ok ? await r.json() : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  console.log('🚀 Iniciando Super Sync 24H NORTE...');
+
+  // 1. Dados Básicos (API MS)
+  const [resAtivos, resCancelados, resLeads, resCheckins] = await Promise.all([
+    fetchPacto(`/adm-core-ms/v1/contratos?empresa=${EMPRESA}&unidade=${UNIDADE}&situacao=ATIVO&size=1`),
+    fetchPacto(`/adm-core-ms/v1/contratos?empresa=${EMPRESA}&unidade=${UNIDADE}&situacao=CANCELADO&size=1&dataDe=${mesInicio}&dataAte=${hoje}`),
+    fetchPacto(`/crm-ms/v1/leads?empresa=${EMPRESA}&unidade=${UNIDADE}&situacao=ABERTO&size=1`),
+    fetchPacto(`/adm-core-ms/v1/acessos?empresa=${EMPRESA}&unidade=${UNIDADE}&data=${hoje}`)
   ]);
 
-  const get = (r) => r.status === 'fulfilled' ? r.value : null;
-  const total = (r) => get(r)?.totalElements ?? get(r)?.total ?? 0;
+  // 2. Dados Avançados (Sintético - O que estava faltando!)
+  console.log('📊 Capturando dados financeiros e movimentação...');
+  const [resMov, resFin, resInad] = await Promise.all([
+    fetchPacto(`/sintetico/prest/movimentacao-contratos?empresa=${EMPRESA}&unidade=${UNIDADE}&dtIni=${mesInicio}&dtFim=${hoje}`),
+    fetchPacto(`/sintetico/prest/financeiro?empresa=${EMPRESA}&unidade=${UNIDADE}&mes=${mes}`),
+    fetchPacto(`/sintetico/prest/clientes/inadimplentes?empresa=${EMPRESA}&unidade=${UNIDADE}&page=0&size=100`)
+  ]);
 
-  const ativosTotal    = total(contratos);
-  const canceladosTotal = total(cancelados);
-  const leadsTotal     = total(leads);
-  const checkinData    = get(checkins);
-  const finData        = get(financeiro);
+  const ativos      = resAtivos?.totalElements || 0;
+  const cancelados  = resCancelados?.totalElements || 0;
+  const leads       = resLeads?.totalElements || 0;
+  const checkins    = Array.isArray(resCheckins?.content) ? resCheckins.content.length : (resCheckins?.totalElements || 0);
+
+  // Mapeamento dos dados do sintetico
+  const mov = resMov || {};
+  const fin = resFin || {};
 
   const stats = {
-    ativos:        ativosTotal,
-    cancelamentos: canceladosTotal,
-    leadsAtivos:   leadsTotal,
-    checkinsHoje:  Array.isArray(checkinData?.content) ? checkinData.content.length : (checkinData?.totalElements || 0),
-    receita:       finData?.totalReceita || finData?.receitaMes || 0,
-    novasVendas:   total(cancelados),
-    inadimplentes: 0,
-    renovacoes30d: 0,
+    // Básicos
+    ativos,
+    cancelamentos: cancelados,
+    leadsAtivos:   leads,
+    checkinsHoje:  checkins,
+    
+    // Avançados (Sintético)
+    receita:       fin.receitaMes || fin.totalReceita || 0,
+    aReceber:      fin.aReceber || 0,
+    inadimplentes: mov.inadimplentes || (Array.isArray(resInad?.content) ? resInad.content.length : 0),
+    agregadores:   mov.clientesAgregadores || mov.dependentes || 0,
+    vencidos:      mov.contratosVencidos || 0,
+    renovacoes30d: mov.renovacoes30d || 0,
+    
+    // Cálculos
+    novasVendas:   (mov.matriculadosMes || 0) + (mov.rematriculadosMes || 0),
+    totalAlunos:   ativos + (mov.clientesAgregadores || 0) + (mov.contratosVencidos || 0),
+    
     funil: {
-      lead:     Math.floor(leadsTotal * 0.4),
-      contato:  Math.floor(leadsTotal * 0.3),
-      visita:   Math.floor(leadsTotal * 0.2),
-      proposta: Math.floor(leadsTotal * 0.1),
-      fechado:  0,
+      lead:     Math.floor(leads * 0.4),
+      contato:  Math.floor(leads * 0.3),
+      visita:   Math.floor(leads * 0.2),
+      proposta: Math.floor(leads * 0.1),
+      fechado:  (mov.matriculadosMes || 0) + (mov.rematriculadosMes || 0),
     },
-    leadsSemContato: Math.floor(leadsTotal * 0.15),
+    _isFullSync: true
   };
 
-  const checkinItems = Array.isArray(checkinData?.content)
-    ? checkinData.content.slice(0, 50).map(c => ({
-        nome:   c.nomeCliente || c.nome || 'Aluno',
-        hora:   c.dataAcesso ? new Date(c.dataAcesso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
-        plano:  c.plano || c.nomePlano || '-',
-        status: c.situacao || 'OK',
-      }))
-    : [];
-
-  const payload = { stats, checkins: checkinItems };
+  const payload = { 
+    stats, 
+    _raw: { movimentacao: resMov, financeiro: resFin },
+    checkins: Array.isArray(resCheckins?.content) ? resCheckins.content.slice(0, 20).map(c => ({
+      nome: c.nomeCliente || 'Aluno',
+      hora: c.dataAcesso ? new Date(c.dataAcesso).toLocaleTimeString('pt-BR') : '--:--',
+      plano: c.plano || '-'
+    })) : []
+  };
 
   try {
-    const resp = await fetch(`${SERVER}/api/dashboard/sync`, {
+    const r = await fetch(`${SERVER}/api/dashboard/sync`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Sync-Key': SYNC_KEY,
-      },
-      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json', 'X-Sync-Key': SYNC_KEY },
+      body: JSON.stringify(payload)
     });
-    const result = await resp.json();
-    console.log('✅ Sync completo:', result);
+    const res = await r.json();
+    console.log('✅ SUPER SYNC COMPLETO!', res);
     console.table({
-      'Alunos ativos':      stats.ativos,
-      'Cancelamentos (mês)': stats.cancelamentos,
-      'Leads ativos':       stats.leadsAtivos,
-      'Check-ins hoje':     stats.checkinsHoje,
-      'Receita do mês':     stats.receita,
+      Ativos: stats.ativos,
+      Receita: stats.receita,
+      Inadimplentes: stats.inadimplentes,
+      'Vendas Mês': stats.novasVendas
     });
   } catch (e) {
-    console.error('❌ Erro ao enviar dados:', e.message);
+    console.error('❌ Erro no envio:', e.message);
   }
 })();

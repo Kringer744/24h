@@ -442,69 +442,77 @@ async function getContratos(params = {}) {
 
 // ─── SINTETICO ───────────────────────────────────────────────────────────────
 
-async function getSintetico() {
+/**
+ * Busca dados financeiros do mês atual via Microserviço de Financeiro
+ * Não requer login, apenas API Key.
+ */
+async function getFinanceiroMS() {
   const hoje = new Date().toISOString().split('T')[0];
-  const mes = hoje.substring(0, 7);
+  const mesAno = hoje.substring(0, 7); // "2026-03"
   
   try {
-    console.log('[PACTO] Buscando sintetico...');
-    // Ajuste de URL: Sintético MS costuma ter caminhos específicos
-    const mov = await requestWithRetry(sintetico, 'get', '/prest/movimentacao-contratos', {
-      params: { 
-        empresa: EMPRESA_ID, 
-        unidade: EMPRESA_ID, 
-        dtIni: mes + '-01',
-        dtFim: hoje
-      },
-      headers: { 'empresaId': EMPRESA_ID, 'unidadeId': UNIDADE_ID }
-    }).catch(e => { console.error('[PACTO] Movimentação Erro:', e.message); return null; });
-
-    const fin = await requestWithRetry(sintetico, 'get', '/prest/financeiro', {
-      params: { 
-        empresa: EMPRESA_ID, 
-        unidade: EMPRESA_ID,
-        mes: mes
-      },
-      headers: { 'empresaId': EMPRESA_ID, 'unidadeId': UNIDADE_ID }
-    }).catch(e => { console.error('[PACTO] Financeiro Erro:', e.message); return null; });
-
-    if (!mov && !fin) return null;
-
-    const m = mov?.data || {};
-    const f = fin?.data || {};
-
-    const ativos = m.contratosAtivos || m.ativos || m.totalAtivos || 0;
-    const agregadores = m.clientesAgregadores || m.agregadores || 0;
-    const vencidos = m.contratosVencidos || m.vencidos || 0;
+    const res = await requestWithRetry(gateway, 'get', `/financeiro-ms/v1/receitas`, {
+      params: { empresa: EMPRESA_ID, unidade: UNIDADE_ID, mesAno },
+      headers: { 'Authorization': `Bearer ${config.pacto.apiKey}` }
+    });
     
-    // Cancelamentos Total = Cancelados + Desistência
-    const cancelados = m.canceladosMes || m.cancelados || 0;
-    const desistencia = m.desistenciaMes || m.desistencia || 0;
-    const totalCancelamentos = cancelados + desistencia;
-
-    const matriculados = m.matriculadosMes || m.matriculados || 0;
-    const rematriculados = m.rematriculadosMes || m.rematriculados || 0;
-    const totalVendas = matriculados + rematriculados;
-
-    console.log(`[PACTO] Sintetico Result: Ativos=${ativos}, Agregadores=${agregadores}, Vendas=${totalVendas}, Cancel=${totalCancelamentos}`);
-
+    // O pacto costuma retornar { totalReceita, totalAReceber, ... }
     return {
-      ativos: ativos,
-      agregadores: agregadores,
-      vencidos: vencidos,
-      totalAlunos: ativos + agregadores + vencidos,
-      novasVendas: totalVendas,
-      cancelamentos: totalCancelamentos,
-      inadimplentes: m.inadimplentesMes || m.inadimplentes || 0,
-      renovacoes30d: m.renovacoes30d || 0,
-      checkinsHoje: m.checkinsHoje || 0,
-      receitaMes: f.receitaMes || f.totalReceita || 0,
-      _raw_mov: m // para debug futuro
+      receitaMes: res.data?.totalReceita || res.data?.receita || 0,
+      aReceber:   res.data?.totalAReceber || 0,
+      _raw: res.data
     };
   } catch (err) {
-    console.error('[PACTO] Sintético falhou:', err.message);
-    return null;
+    console.error('[PACTO] Erro ao buscar Financeiro MS:', err.message);
+    return { receitaMes: 0, aReceber: 0 };
   }
+}
+
+/**
+ * Busca lista nominal de inadimplentes via Microserviço de Contratos
+ */
+async function getInadimplentesMS() {
+  try {
+    const res = await requestWithRetry(gateway, 'get', `/adm-core-ms/v1/contratos`, {
+      params: { 
+        empresa: EMPRESA_ID, 
+        unidade: UNIDADE_ID, 
+        situacao: 'INADIMPLENTE',
+        size: 500
+      },
+      headers: { 'Authorization': `Bearer ${config.pacto.apiKey}` }
+    });
+    
+    const items = res.data?.content || [];
+    return items.map(c => ({
+      nome:             c.nomeCliente || c.nome || '',
+      matricula:        String(c.matricula || c.codigoCliente || ''),
+      situacao:         'INADIMPLENTE',
+      situacaoContrato: 'INADIMPLENTE',
+      telefone:         Array.isArray(c.telefones) ? (c.telefones[0]?.numero || '') : (c.telefone || ''),
+      email:            Array.isArray(c.emails) ? (c.emails[0] || '') : (c.email || ''),
+    }));
+  } catch (err) {
+    console.error('[PACTO] Erro ao buscar Inadimplentes MS:', err.message);
+    return [];
+  }
+}
+
+async function getSintetico() {
+  // Agora buscamos via MS para garantir que funcione no Vercel
+  const fin = await getFinanceiroMS();
+  const inad = await getInadimplentesMS();
+  const ativosRes = await getContratosAtivos();
+
+  return {
+    ativos: ativosRes.total,
+    inadimplentes: inad.length,
+    receitaMes: fin.receitaMes,
+    aReceber: fin.aReceber,
+    checkinsHoje: ativosRes.checkinsHoje,
+    matriculadosMes: ativosRes.matriculadosMes,
+    _source: 'pacto-ms-api'
+  };
 }
 
 // ─── ACESSOS / CHECK-IN ─────────────────────────────────────────────────────
