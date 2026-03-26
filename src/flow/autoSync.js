@@ -47,17 +47,42 @@ async function runSync() {
 
     const hasCredentials = !!(process.env.PACTO_USER && process.env.PACTO_PASS);
 
-    // Se estivermos LOCAL, ainda tentamos o Headless/Session para dados que o MS não tem
-    if (!isVercel && hasCredentials) {
-      if (pactoHeadless) {
+    // Tenta pactoSession (JSESSIONID login automático — funciona local E Vercel)
+    // No Vercel: tenta JWT relay primeiro, depois login via credenciais sem browser
+    // Local: usa headless se disponível, senão cai no pactoSession
+    if (hasCredentials) {
+      try {
+        const [movRes, finRes, inadRes] = await Promise.allSettled([
+          pactoSession.getMovimentacao(),
+          pactoSession.getFinanceiro(),
+          pactoSession.getInadimplentesLista(),
+        ]);
+        movData = movRes.status === 'fulfilled' ? movRes.value : null;
+        finData = finRes.status === 'fulfilled' ? finRes.value : null;
+        const inadList = inadRes.status === 'fulfilled' ? inadRes.value : null;
+        if (inadList?.length > 0) {
+          cache.set('inadimplentes_lista', { items: inadList, total: inadList.length });
+          console.log(`[AUTO-SYNC] Inadimplentes via session: ${inadList.length}`);
+        }
+        if (movData || finData) {
+          console.log('[AUTO-SYNC] Dados financeiros via pactoSession OK');
+        } else {
+          console.warn('[AUTO-SYNC] pactoSession sem dados — sessão pode ter falhado');
+        }
+      } catch (e) {
+        console.warn('[AUTO-SYNC] pactoSession falhou:', e.message);
+      }
+
+      // Local: tenta também o Headless com Chrome (mais confiável se Chrome aberto)
+      if (!isVercel && pactoHeadless && !movData) {
         try {
           await pactoHeadless.ensureJwt();
           const [movRes, finRes] = await Promise.allSettled([
             pactoHeadless.getMovimentacao(),
             pactoHeadless.getFinanceiro(),
           ]);
-          movData = movRes.status === 'fulfilled' ? movRes.value : null;
-          finData = finRes.status === 'fulfilled' ? finRes.value : null;
+          movData = movData || (movRes.status === 'fulfilled' ? movRes.value : null);
+          finData = finData || (finRes.status === 'fulfilled' ? finRes.value : null);
         } catch (_) {}
       }
     }
