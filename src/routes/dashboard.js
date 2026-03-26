@@ -41,11 +41,13 @@ router.get('/stats', async (req, res) => {
   let stats   = cache.get('stats') || {};
   let rawData = cache.get('_raw');
 
-  // Verifica se cache está vazio OU expirado (cold start no Vercel ou dados antigos)
+  // No Vercel, PACTO API é bloqueada por IP — só usa dados do relay local
+  // Localmente, roda sync se cache vazio ou expirado
+  const isVercel = !!process.env.VERCEL;
   const cacheAge = stats._syncedAt ? Date.now() - new Date(stats._syncedAt).getTime() : Infinity;
   const needsSync = (!stats._syncedAt && !stats.ativos) || cacheAge > STATS_MAX_AGE_MS;
 
-  if (needsSync) {
+  if (!isVercel && needsSync) {
     console.log(`[DASHBOARD] Cache ${!stats._syncedAt ? 'vazio' : 'expirado (' + Math.round(cacheAge/60000) + 'min)'}. Rodando sync...`);
     try { await autoSync.runSync(); } catch (_) {}
     stats   = cache.get('stats') || {};

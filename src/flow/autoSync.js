@@ -158,7 +158,7 @@ module.exports = {
       console.log('[AUTO-SYNC] Mode: Vercel/Serverless (Sincronização reativa)');
       runSync().catch(() => {});
     } else {
-      setInterval(runSync, 20 * 60 * 1000);
+      setInterval(runSync, 5 * 60 * 1000); // 5 min — mantém Vercel sempre atualizado
       runSync().catch(() => {});
     }
   }
