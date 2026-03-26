@@ -89,10 +89,15 @@ async function runSync() {
             cache.set('inadimplentes_lista', { items: inadList, total: inadList.length });
             console.log(`[AUTO-SYNC] Inadimplentes via session: ${inadList.length}`);
           }
+          // Verificar se os dados são HTML (falso positivo de JSESSIONID inválido)
+          const isHtmlData = d => typeof d === 'string' && d.trim().startsWith('<');
+          if (isHtmlData(movData)) movData = null;
+          if (isHtmlData(finData)) finData = null;
+
           if (movData || finData) {
             console.log('[AUTO-SYNC] Dados financeiros via pactoSession OK');
           } else {
-            console.warn('[AUTO-SYNC] pactoSession sem dados — aguardando JWT do browser');
+            console.warn('[AUTO-SYNC] pactoSession sem dados — aguardando JWT do browser (use iniciar-24h.bat)');
           }
         } catch (e) {
           console.warn('[AUTO-SYNC] pactoSession falhou:', e.message);

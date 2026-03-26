@@ -316,9 +316,17 @@ async function getsintetico(path, params = {}) {
     console.warn('[PACTO-SESSION] Auth MS JWT também falhou no sintetico.');
   }
 
-  // 3. Fallback: JSESSIONID cookie
+  // 3. JSESSIONID — só útil se o relay de JWT foi obtido via session exchange em login()
+  //    Se não há JWT no relay após login, lgn sintetico não aceita JSESSIONID → pular
+  const jwtAfterLogin = relay.loadJwt();
+  if (jwtAfterLogin) {
+    // login() pode ter obtido JWT via session exchange — tenta novamente
+    const r = await _jwtGet(url, params, jwtAfterLogin);
+    if (r) return r;
+  }
+
   const ok = await ensureSession();
-  if (!ok) throw new Error(_session.lastError || 'Sem sessão PACTO');
+  if (!ok) throw new Error(_session.lastError || 'Sem sessão PACTO (JWT necessário — abra o Chrome com iniciar-24h.bat)');
 
   const sessionHeaders = {
     'Cookie': `JSESSIONID=${_session.jsessionid}`,
@@ -334,6 +342,11 @@ async function getsintetico(path, params = {}) {
     headers: sessionHeaders,
     validateStatus: s => s < 500,
   });
+
+  // Rejeita resposta HTML (página de login retornada quando JSESSIONID é inválido)
+  if (typeof response.data === 'string' && response.data.trim().startsWith('<')) {
+    throw new Error('Sintetico retornou HTML com JSESSIONID — JWT necessário (use iniciar-24h.bat)');
+  }
 
   if (response.status === 401 || response.status === 403) {
     // Sessão expirou — forçar re-login
