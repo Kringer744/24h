@@ -122,22 +122,30 @@ async function getContratosAtivos() {
 }
 
 /**
- * Busca dados financeiros via Microserviço
+ * Busca dados financeiros via /v1/bi/resumo (apigw — sem JWT, só API key)
+ * Retorna receita recebida no mês e total a receber.
  */
 async function getFinanceiroMS() {
   const hoje = new Date().toISOString().split('T')[0];
-  const mesAno = hoje.substring(0, 7);
+  const mes  = hoje.substring(0, 7); // "2026-03"
   try {
-    const res = await requestWithRetry(gateway, 'get', `/financeiro-ms/v1/receitas`, {
-      params: { empresa: EMPRESA_ID, unidade: UNIDADE_ID, mesAno },
-      headers: { 'Authorization': `Bearer ${config.pacto.apiKey}` }
+    const res = await requestWithRetry(gateway, 'get', '/v1/bi/resumo', {
+      params:  { mesInicial: mes, mesFinal: mes },
+      headers: {
+        'Authorization': `Bearer ${config.pacto.apiKey}`,
+        'empresaId':     String(EMPRESA_ID),
+      },
     });
+    const c = res.data?.content?.[0] || {};
     return {
-      receitaMes: res.data?.totalReceita || res.data?.receita || 0,
-      aReceber: res.data?.totalAReceber || 0
+      receitaMes:       c.contasReceberPorDataQuitacao || c.faturamentoPorDataLancamento || c.totalReceita || 0,
+      aReceber:         c.recebiveis                  || c.contasReceberPorDataLancamento || 0,
+      faturamento:      c.totalFaturamento             || 0,
+      despesas:         c.totalDespesa                 || 0,
     };
   } catch (err) {
-    return { receitaMes: 0, aReceber: 0 };
+    console.error('[PACTO] getFinanceiroMS bi/resumo falhou:', err.message);
+    return { receitaMes: 0, aReceber: 0, faturamento: 0, despesas: 0 };
   }
 }
 
@@ -170,6 +178,8 @@ async function getSintetico() {
     inadimplentes:    inad.length || ativosRes.vencidos || 0,
     receitaMes:       fin.receitaMes,
     aReceber:         fin.aReceber,
+    faturamento:      fin.faturamento,
+    despesas:         fin.despesas,
     checkinsHoje:     ativosRes.checkinsHoje,
     matriculadosMes:  matriculas || ativosRes.matriculadosMes || 0,
     cancelamentosMes: cancelados,
