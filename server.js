@@ -105,7 +105,7 @@ app.get('/api/config/status', (req, res) => {
   });
 });
 
-// JWT Relay — recebe JWT do app local e armazena no Vercel (sync key protegido)
+// JWT Relay — recebe JWT do app local/bookmarklet e armazena no Vercel (sync key protegido)
 app.post('/jwt-relay', (req, res) => {
   const key = req.headers['x-sync-key'] || req.query.key;
   const SYNC_KEY = process.env.SYNC_KEY || '24hNorte_sync';
@@ -116,7 +116,10 @@ app.post('/jwt-relay', (req, res) => {
   }
   const relay = require('./src/integrations/pactoJwtRelay');
   relay.saveJwt(jwt, expiresAt || null);
-  console.log('[JWT-RELAY] JWT recebido do app local e armazenado.');
+  console.log('[JWT-RELAY] JWT recebido e armazenado. Disparando sync...');
+  // Dispara sync assíncrono para atualizar o cache com o novo JWT
+  const autoSync = require('./src/flow/autoSync');
+  autoSync.runSync().catch(() => {});
   res.json({ success: true, ts: new Date().toISOString() });
 });
 
