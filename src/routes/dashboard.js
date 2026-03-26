@@ -43,7 +43,8 @@ router.get('/stats', async (req, res) => {
 
   // Roda sync se cache vazio ou expirado (PACTO gateway funciona no Vercel via API key)
   const cacheAge = stats._syncedAt ? Date.now() - new Date(stats._syncedAt).getTime() : Infinity;
-  const needsSync = (!stats._syncedAt && !stats.ativos) || cacheAge > STATS_MAX_AGE_MS;
+  // Força sync se: sem dados reais (ativos=0), sem timestamp, ou cache expirado
+  const needsSync = !stats.ativos || !stats._syncedAt || cacheAge > STATS_MAX_AGE_MS;
 
   if (needsSync) {
     console.log(`[DASHBOARD] Cache ${!stats._syncedAt ? 'vazio' : 'expirado (' + Math.round(cacheAge/60000) + 'min)'}. Rodando sync...`);
