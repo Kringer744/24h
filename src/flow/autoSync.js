@@ -117,6 +117,30 @@ async function runSync() {
     if (ativosData?.checkinsLista) {
       cache.set('checkins', { items: ativosData.checkinsLista.slice(0, 20) });
     }
+    if (ativosData?.items) {
+      cache.set('alunos', { items: ativosData.items, total: ativosData.items.length });
+    }
+
+    // ── 5. Relay para Vercel (quando rodando local — PACTO API bloqueada no Vercel)
+    if (!isVercel) {
+      const vercelUrl = process.env.VERCEL_SYNC_URL;
+      const syncKey   = process.env.SYNC_KEY || '24hNorte_sync';
+      if (vercelUrl) {
+        const axios = require('axios');
+        const url = vercelUrl.startsWith('http') ? vercelUrl : `https://${vercelUrl}`;
+        const payload = {
+          stats,
+          checkins: ativosData?.checkinsLista?.slice(0, 20) || [],
+          alunos:   ativosData?.items || [],
+          _raw:     { movimentacao: md, financeiro: fd },
+        };
+        axios.post(`${url}/data-relay`, payload, {
+          headers: { 'x-sync-key': syncKey, 'Content-Type': 'application/json' },
+          timeout: 15000,
+        }).then(() => console.log('[AUTO-SYNC] Dados enviados para Vercel via /data-relay'))
+          .catch(e => console.warn('[AUTO-SYNC] Relay para Vercel falhou:', e.message));
+      }
+    }
 
     console.log(`✅ [AUTO-SYNC] Finalizado em ${Date.now() - tStart}ms`);
     return stats;

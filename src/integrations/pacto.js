@@ -1,5 +1,5 @@
 const axios = require('axios');
-const config = require('../config/env');
+const config = require('../config/apis');
 const fs = require('fs');
 const path = require('path');
 
@@ -9,7 +9,7 @@ const UNIDADE_ID = config.pacto.unidadeId || '4';
 
 // Instâncias Axios
 const gateway = axios.create({
-  baseURL: config.pacto.apiBaseUrl,
+  baseURL: config.pacto.gatewayUrl || 'https://gateway.sistemapacto.com.br',
   timeout: 30000,
 });
 
@@ -158,10 +158,21 @@ async function getSintetico() {
   };
 }
 
+async function healthCheck() {
+  try {
+    const res = await requestWithRetry(gateway, 'get', '/psec/clientes/ativos', {
+      headers: { 'empresaId': EMPRESA_ID, 'unidadeId': UNIDADE_ID },
+      params: { page: 0, size: 1 },
+    });
+    return res.status === 200;
+  } catch (_) { return false; }
+}
+
 module.exports = {
   getContratosAtivos,
   getFinanceiroMS,
   getInadimplentesMS,
   getSintetico,
-  getContratosCount
+  getContratosCount,
+  healthCheck,
 };

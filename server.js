@@ -105,6 +105,22 @@ app.get('/api/config/status', (req, res) => {
   });
 });
 
+// Data Relay — recebe dados completos do app local e popula o cache (IP local acessa PACTO, Vercel não)
+app.post('/data-relay', (req, res) => {
+  const key = req.headers['x-sync-key'] || req.query.key;
+  const SYNC_KEY = process.env.SYNC_KEY || '24hNorte_sync';
+  if (!key || key !== SYNC_KEY) return res.status(403).json({ error: 'Forbidden' });
+  const data = req.body || {};
+  const cache = require('./src/storage/cache');
+  if (data.stats)         cache.set('stats', { ...data.stats, _syncedAt: new Date().toISOString(), _relayed: true });
+  if (data.alunos)        cache.set('alunos', { items: data.alunos, total: data.alunos.length });
+  if (data.checkins)      cache.set('checkins', { items: data.checkins });
+  if (data.inadimplentes) cache.set('inadimplentes_lista', { items: data.inadimplentes, total: data.inadimplentes.length });
+  if (data._raw)          cache.set('_raw', data._raw);
+  console.log('[DATA-RELAY] Dados recebidos do app local:', Object.keys(data).join(', '));
+  res.json({ success: true, ts: new Date().toISOString(), keys: Object.keys(data) });
+});
+
 // JWT Relay — recebe JWT do app local/bookmarklet e armazena no Vercel (sync key protegido)
 app.post('/jwt-relay', (req, res) => {
   const key = req.headers['x-sync-key'] || req.query.key;
