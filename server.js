@@ -110,6 +110,25 @@ app.get('/api/config/status', (req, res) => {
   });
 });
 
+// Diagnóstico: testa endpoints do sintetico e retorna status/dados brutos
+app.get('/api/debug/sintetico', async (req, res) => {
+  const pactoSession = require('./src/integrations/pactoSession');
+  const results = {};
+  try {
+    await pactoSession.ensureSession();
+    results.sessionStatus = pactoSession.getSessionStatus();
+  } catch (e) { results.sessionError = e.message; }
+  try {
+    const mov = await pactoSession.getMovimentacao();
+    results.movimentacao = { ok: true, keys: Object.keys(mov || {}), sample: JSON.stringify(mov).substring(0, 300) };
+  } catch (e) { results.movimentacao = { ok: false, error: e.message }; }
+  try {
+    const fin = await pactoSession.getFinanceiro();
+    results.financeiro = { ok: true, keys: Object.keys(fin || {}), sample: JSON.stringify(fin).substring(0, 300) };
+  } catch (e) { results.financeiro = { ok: false, error: e.message }; }
+  res.json(results);
+});
+
 // Data Relay — recebe dados completos do app local e popula o cache (IP local acessa PACTO, Vercel não)
 app.post('/data-relay', (req, res) => {
   const key = req.headers['x-sync-key'] || req.query.key;
