@@ -1,18 +1,23 @@
 /**
  * 24H NORTE — Super Sync Script (Versão Completa)
- * 
- * Este script captura TUDO: Ativos, Financeiro, Inadimplentes e Movimentação.
- * Como ele roda no seu navegador logado, ele pula as barreiras de segurança do Vercel.
+ *
+ * Roda no navegador logado no PACTO e envia todos os dados para o Vercel.
+ * Como ele roda no seu navegador já autenticado, acessa o sintetico sem barreiras.
+ *
+ * COMO USAR:
+ * 1. Abra app.pactosolucoes.com.br e faça login
+ * 2. Abra o console (F12 → Console)
+ * 3. Cole e execute este script
  */
 
 (async function SUPER_SYNC_24H_NORTE() {
-  const SERVER = 'https://24h-nine.vercel.app';
+  const SERVER   = 'https://24h-nine.vercel.app';
   const SYNC_KEY = '24hNorte_sync';
-  const EMPRESA = 4;
-  const UNIDADE = 4;
+  const EMPRESA  = 4;
+  const UNIDADE  = 4;
 
-  const hoje = new Date().toISOString().split('T')[0];
-  const mes = hoje.substring(0, 7);
+  const hoje      = new Date().toISOString().split('T')[0];
+  const mes       = hoje.substring(0, 7);
   const mesInicio = mes + '-01';
 
   async function fetchPacto(url) {
@@ -26,85 +31,79 @@
 
   console.log('🚀 Iniciando Super Sync 24H NORTE...');
 
-  // 1. Dados Básicos (API MS)
-  const [resAtivos, resCancelados, resLeads, resCheckins] = await Promise.all([
-    fetchPacto(`/adm-core-ms/v1/contratos?empresa=${EMPRESA}&unidade=${UNIDADE}&situacao=ATIVO&size=1`),
-    fetchPacto(`/adm-core-ms/v1/contratos?empresa=${EMPRESA}&unidade=${UNIDADE}&situacao=CANCELADO&size=1&dataDe=${mesInicio}&dataAte=${hoje}`),
-    fetchPacto(`/crm-ms/v1/leads?empresa=${EMPRESA}&unidade=${UNIDADE}&situacao=ABERTO&size=1`),
-    fetchPacto(`/adm-core-ms/v1/acessos?empresa=${EMPRESA}&unidade=${UNIDADE}&data=${hoje}`)
-  ]);
-
-  // 2. Dados Avançados (Sintético - O que estava faltando!)
+  // ── 1. Dados do Sintetico (requer login PACTO no browser)
   console.log('📊 Capturando dados financeiros e movimentação...');
   const [resMov, resFin, resInad] = await Promise.all([
     fetchPacto(`/sintetico/prest/movimentacao-contratos?empresa=${EMPRESA}&unidade=${UNIDADE}&dtIni=${mesInicio}&dtFim=${hoje}`),
     fetchPacto(`/sintetico/prest/financeiro?empresa=${EMPRESA}&unidade=${UNIDADE}&mes=${mes}`),
-    fetchPacto(`/sintetico/prest/clientes/inadimplentes?empresa=${EMPRESA}&unidade=${UNIDADE}&page=0&size=100`)
+    fetchPacto(`/sintetico/prest/clientes/inadimplentes?empresa=${EMPRESA}&unidade=${UNIDADE}&page=0&size=500`)
   ]);
 
-  const ativos      = resAtivos?.totalElements || 0;
-  const cancelados  = resCancelados?.totalElements || 0;
-  const leads       = resLeads?.totalElements || 0;
-  const checkins    = Array.isArray(resCheckins?.content) ? resCheckins.content.length : (resCheckins?.totalElements || 0);
+  // ── 2. Normaliza movimentação: API retorna { table: {...} } ou flat
+  const movRaw   = resMov || {};
+  const movTable = movRaw.table || movRaw;  // suporte a ambos os formatos
+  const fin      = resFin || {};
 
-  // Mapeamento dos dados do sintetico
-  const mov = resMov || {};
-  const fin = resFin || {};
+  const inadList = resInad?.content || resInad?.clientes || resInad?.items || (Array.isArray(resInad) ? resInad : []);
 
+  // ── 3. Monta stats completo
   const stats = {
-    // Básicos
-    ativos,
-    cancelamentos: cancelados,
-    leadsAtivos:   leads,
-    checkinsHoje:  checkins,
-    
-    // Avançados (Sintético)
-    receita:       fin.receitaMes || fin.totalReceita || 0,
-    aReceber:      fin.aReceber || 0,
-    inadimplentes: mov.inadimplentes || (Array.isArray(resInad?.content) ? resInad.content.length : 0),
-    agregadores:   mov.clientesAgregadores || mov.dependentes || 0,
-    vencidos:      mov.contratosVencidos || 0,
-    renovacoes30d: mov.renovacoes30d || 0,
-    
-    // Cálculos
-    novasVendas:   (mov.matriculadosMes || 0) + (mov.rematriculadosMes || 0),
-    totalAlunos:   ativos + (mov.clientesAgregadores || 0) + (mov.contratosVencidos || 0),
-    
-    funil: {
-      lead:     Math.floor(leads * 0.4),
-      contato:  Math.floor(leads * 0.3),
-      visita:   Math.floor(leads * 0.2),
-      proposta: Math.floor(leads * 0.1),
-      fechado:  (mov.matriculadosMes || 0) + (mov.rematriculadosMes || 0),
-    },
-    _isFullSync: true
+    // Movimentação do mês
+    novasVendas:   (movTable.matriculadosMes   || 0) + (movTable.rematriculadosMes || 0),
+    cancelamentos: (movTable.canceladosMes     || 0) + (movTable.desistenciaMes    || 0),
+
+    // Financeiro (sintetico)
+    receita:       fin.receitaMes  || fin.totalReceita  || fin.receita  || fin.receitaBruta  || 0,
+    aReceber:      fin.aReceber    || fin.totalAReceber  || 0,
+    inadimplentes: inadList.length || movTable.inadimplentes || 0,
+
+    // Vínculos e contratos
+    agregadores:   movTable.clientesAgregadores || movTable.dependentes  || movTable.agregadores  || 0,
+    vencidos:      movTable.contratosVencidos   || movTable.vencidos     || 0,
+    renovacoes30d: movTable.renovacoes30d       || movTable.renovacoesMes || 0,
+
+    _isFullSync: true,
   };
 
-  const payload = { 
-    stats, 
+  // ── 4. Inadimplentes detalhado para lista
+  const inadimplentesDetalhe = inadList.map(c => ({
+    nome:      c.nome || c.nomeCliente || '',
+    matricula: String(c.matricula || c.codigoCliente || ''),
+    situacao:  'INADIMPLENTE',
+    telefone:  Array.isArray(c.telefones) ? (c.telefones[0]?.numero || '') : (c.telefone || ''),
+    email:     Array.isArray(c.emails)    ? (c.emails[0]    || '')         : (c.email    || ''),
+  })).filter(c => c.nome);
+
+  const payload = {
+    stats,
+    inadimplentes: inadimplentesDetalhe,
     _raw: { movimentacao: resMov, financeiro: resFin },
-    checkins: Array.isArray(resCheckins?.content) ? resCheckins.content.slice(0, 20).map(c => ({
-      nome: c.nomeCliente || 'Aluno',
-      hora: c.dataAcesso ? new Date(c.dataAcesso).toLocaleTimeString('pt-BR') : '--:--',
-      plano: c.plano || '-'
-    })) : []
   };
+
+  console.log('📤 Enviando para Vercel...', { receita: stats.receita, inadimplentes: stats.inadimplentes, novasVendas: stats.novasVendas });
 
   try {
     const r = await fetch(`${SERVER}/api/dashboard/sync`, {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json', 'X-Sync-Key': SYNC_KEY },
-      body: JSON.stringify(payload)
+      body:    JSON.stringify(payload),
     });
     const res = await r.json();
-    console.log('✅ SUPER SYNC COMPLETO!', res);
-    console.table({
-      Ativos: stats.ativos,
-      Receita: stats.receita,
-      Inadimplentes: stats.inadimplentes,
-      'Vendas Mês': stats.novasVendas
-    });
+    if (res.success) {
+      console.log('✅ SUPER SYNC COMPLETO!');
+      console.table({
+        Ativos:        '(mantido)',
+        Receita:       'R$ ' + stats.receita,
+        Inadimplentes: stats.inadimplentes,
+        'Vendas Mês':  stats.novasVendas,
+        Renovações:    stats.renovacoes30d,
+        Vencidos:      stats.vencidos,
+        Agregadores:   stats.agregadores,
+      });
+    } else {
+      console.error('❌ Erro no envio:', res);
+    }
   } catch (e) {
-    console.error('❌ Erro no envio:', e.message);
+    console.error('❌ Falha ao enviar:', e.message);
   }
 })();

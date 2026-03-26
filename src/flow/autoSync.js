@@ -64,8 +64,10 @@ async function runSync() {
 
     // ── 3. Consolidação Final
     const cached = cache.get('stats') || {};
-    const md = movData || {};
-    const fd = finData || {};
+    // A API sintetico retorna movimentação como { table: {...} } — normaliza para flat
+    const mdRaw = movData || {};
+    const md    = mdRaw.table || mdRaw; // suporte a ambos os formatos
+    const fd    = finData || {};
 
     // DEFINIÇÃO DAS VARIÁVEIS ANTES DO USO NO OBJETO 'det'
     const matriculadosMesFromMS   = msData?.matriculadosMes;
@@ -86,11 +88,11 @@ async function runSync() {
     const ativos        = ativosData?.total     || msData?.ativos || cached.ativos || 0;
     const checkinsHoje  = ativosData?.checkinsHoje || msData?.checkinsHoje || 0;
     const inadimplentes = msData?.inadimplentes || md.inadimplentes || cached.inadimplentes || 0;
-    const receita       = msData?.receitaMes    || fd.receitaMes    || cached.receita || 0;
+    const receita       = msData?.receitaMes    || fd.receitaMes    || fd.totalReceita || cached.receita || 0;
     const aReceber      = msData?.aReceber      || fd.aReceber      || cached.aReceber || 0;
-    const renovacoes30d = msData?.renovacoes30d || ativosData?.renovacoes30d || cached.renovacoes30d || 0;
-    const vencidos      = msData?.vencidos      || ativosData?.vencidos      || cached.vencidos      || 0;
-    const agregadores   = msData?.agregadores   || ativosData?.agregadores   || cached.agregadores   || 0;
+    const renovacoes30d = msData?.renovacoes30d || ativosData?.renovacoes30d || md.renovacoes30d || md.renovacoesMes || cached.renovacoes30d || 0;
+    const vencidos      = msData?.vencidos      || ativosData?.vencidos      || md.contratosVencidos || md.vencidos || cached.vencidos || 0;
+    const agregadores   = msData?.agregadores   || ativosData?.agregadores   || md.clientesAgregadores || md.agregadores || md.dependentes || cached.agregadores || 0;
 
     const stats = {
       ativos,

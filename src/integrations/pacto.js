@@ -191,11 +191,64 @@ async function healthCheck() {
   } catch (_) { return false; }
 }
 
+/**
+ * Lista clientes genérica (fallback para /api/alunos quando cache vazio)
+ */
+async function getClientes(params = {}) {
+  try {
+    const res = await requestWithRetry(gateway, 'get', '/psec/clientes/ativos', {
+      headers: {
+        'Authorization': `Bearer ${config.pacto.apiKey}`,
+        'empresaId': String(EMPRESA_ID),
+        'unidadeId': String(UNIDADE_ID),
+      },
+      params: { page: params.page || 0, size: params.size || 50 },
+    });
+    const clientes = res.data?.content?.clientes || res.data?.clientes || (Array.isArray(res.data) ? res.data : []);
+    return clientes;
+  } catch (err) {
+    console.error('[PACTO] getClientes erro:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Busca cliente por matrícula
+ */
+async function getClienteById(id) {
+  try {
+    const res = await requestWithRetry(gateway, 'get', `/psec/clientes/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${config.pacto.apiKey}`,
+        'empresaId': String(EMPRESA_ID),
+        'unidadeId': String(UNIDADE_ID),
+      },
+    });
+    return res.data;
+  } catch (err) {
+    throw new Error(`Cliente ${id} não encontrado: ${err.message}`);
+  }
+}
+
+/**
+ * Inadimplentes — tenta gateway, fallback para lista vazia
+ */
+async function getContratosInadimplentes() {
+  // Sem endpoint de gateway disponível — retorna lista do cache ou vazia
+  const cache = require('../storage/cache');
+  const cached = cache.get('inadimplentes_lista');
+  if (cached?.items?.length) return cached.items;
+  return [];
+}
+
 module.exports = {
   getContratosAtivos,
   getFinanceiroMS,
   getInadimplentesMS,
   getSintetico,
   getContratosCount,
+  getClientes,
+  getClienteById,
+  getContratosInadimplentes,
   healthCheck,
 };
