@@ -1,254 +1,141 @@
-/**
- * Auto-Sync Engine
- * Busca dados completos do PACTO (sintetico + ativos) automaticamente.
- * Roda na inicialização e a cada 30 minutos.
- * Não requer nenhuma ação do usuário.
- */
-
-const cache = require('../storage/cache');
 const pacto = require('../integrations/pacto');
+const pactoSession = require('../integrations/pactoSession');
+const cache = require('../storage/cache');
 
-// pactoSession usa apenas Axios (HTTP) — funciona em qualquer ambiente incluindo Vercel
-// pactoHeadless usa puppeteer (Chrome) — só funciona localmente
-let pactoSession  = null;
+// Detecção de ambiente Vercel — desabilita headless
+const isVercel = !!process.env.VERCEL;
 let pactoHeadless = null;
-try { pactoSession  = require('../integrations/pactoSession');  } catch (_) {}
-if (!process.env.VERCEL) {
-  try { pactoHeadless = require('../integrations/pactoHeadless'); } catch (_) {}
-}
-
-let _lastSyncAt   = null;
-let _syncRunning  = false;
-let _syncPromise  = null;  // Promise da sync em andamento
-
-/**
- * Executa a sincronização completa.
- * Se já houver uma sync em andamento, aguarda ela terminar (não duplica).
- */
-async function runSync() {
-  if (_syncRunning && _syncPromise) return _syncPromise;
-  if (_syncRunning) return;
-  _syncRunning = true;
-  _syncPromise = _doSync().finally(() => { _syncRunning = false; _syncPromise = null; });
-  return _syncPromise;
-}
-
-async function _doSync() {
-
-  console.log('[AUTO-SYNC] Iniciando sincronização automática...');
-
+if (!isVercel) {
   try {
-    // ── 1. Dados via API Key (sempre disponíveis) ─────────────────────────────
-    let ativosData = null;
-    let inadimplentesData = null;
-    try {
-      [ativosData, inadimplentesData] = await Promise.all([
-        pacto.getContratosAtivos(),
-        pacto.getContratosInadimplentes(),
-      ]);
-    } catch (e) {
-      console.error('[AUTO-SYNC] Erro ao buscar ativos/inadimplentes:', e.message);
-      if (!ativosData) try { ativosData = await pacto.getContratosAtivos(); } catch (_) {}
-    }
-
-    // ── 2. Variáveis de dados
-    let movData = null;
-    let finData = null;
-    let leadsData = null;
-    let msData = null;
-    let fallbackData = {}; // fallbacks via API key
-
-    const hoje = new Date().toISOString().split('T')[0];
-    const mesInicio = hoje.substring(0, 8) + '01';
-
-    // ── 2.1 Fallbacks via API Key (sempre tentamos para garantir dados básicos)
-    try {
-      const [cancelados, renovados] = await Promise.all([
-        pacto.getContratosCount('CANCELADO', mesInicio, hoje),
-        pacto.getContratosCount('RENOVADO',  mesInicio, hoje), // Tenta 'REMATRICULADO' se o sistema usar
-      ]);
-      fallbackData = { 
-        canceladosMes: cancelados, 
-        rematriculadosMes: renovados,
-        matriculadosMes: ativosData?.matriculadosMes || 0
-      };
-      console.log(`[AUTO-SYNC] Fallback API Key: Cancelados=${cancelados}, Renovados=${renovados}`);
-    } catch (e) {
-      console.warn('[AUTO-SYNC] Erro nos fallbacks API key:', e.message);
-    }
-
-    const hasCredentials = !!(process.env.PACTO_USER && process.env.PACTO_PASS);
-
-    try {
-      console.log('[AUTO-SYNC] Buscando dados via Microserviços PACTO...');
-      msData = await pacto.getSintetico();
-    } catch (e) {
-      console.warn('[AUTO-SYNC] Erro ao buscar dados via MS:', e.message);
-    }
-    
-    // Se não estivemos no Vercel e tivermos credenciais, ainda podemos tentar o sintetico legado para dados extras
-    if (!process.env.VERCEL && hasCredentials && pactoHeadless) {
-      try {
-        await pactoHeadless.ensureJwt();
-        const [movRes, finRes, leadsRes] = await Promise.allSettled([
-          pactoHeadless.getMovimentacao(),
-          pactoHeadless.getFinanceiro(),
-          pactoSession.getLeadsCrm(),
-        ]);
-        movData = movRes.status === 'fulfilled' ? movRes.value : null;
-        finData = finRes.status === 'fulfilled' ? finRes.value : null;
-        leadsData = leadsRes.status === 'fulfilled' ? leadsRes.value : null;
-      } catch (_) {}
-    }
-
-    // ── 3. Montar stats consolidados ──────────────────────────────────────────
-    const cached = cache.get('stats') || {};
-
-    // Valores derivados dos ativos (API key)
-    const ativos = ativosData?.total || cached.ativos || 0;
-    const checkinsHoje = ativosData?.checkinsHoje || 0;
-    const checkinsLista = ativosData?.checkinsLista || [];
-    const matriculadosMes = ativosData?.matriculadosMes || 0;
-
-    // Valores do sintetico (sessão JSF) com fallback para cache
-    const md = movData || {};
-    const fd = finData || {};
-
-    const det = {
-      matriculadosHoje:   md.matriculadosHoje   ?? md.matriculado ?? 0,
-      matriculadosMes:    matriculadosMesFromMS ?? md.matriculadosMes ?? md.matriculadoAteHoje ?? md.novasMatriculas ?? fallbackData.matriculadosMes ?? 0,
-      rematriculadosHoje: md.rematriculadosHoje ?? 0,
-      rematriculadosMes:  md.rematriculadosMes  ?? md.renovacoes ?? fallbackData.rematriculadosMes ?? 0,
-      canceladosHoje:     md.canceladosHoje     ?? md.cancelado ?? 0,
-      canceladosMes:      md.canceladosMes      ?? md.canceladoAteHoje ?? md.cancelamentos ?? fallbackData.canceladosMes ?? 0,
-      desistenciaHoje:    md.desistenciaHoje    ?? 0,
-      desistenciaMes:     md.desistenciaMes     ?? md.desistencias ?? 0,
-      trancadosHoje:      md.trancadosHoje      ?? 0,
-      trancadosMes:       md.trancadosMes       ?? md.trancados ?? 0,
-    };
-
-    const agregadores   = md.clientesAgregadores ?? md.agregadores ?? md.dependentes ?? cached.agregadores;
-    const vencidos      = md.contratosVencidos   ?? md.vencidos   ?? cached.vencidos;
-    const inadimplentes = msData?.inadimplentes ?? md.inadimplentes ?? md.totalInadimplentes ??
-      (inadimplentesData?.length > 0 ? inadimplentesData.length : undefined) ?? cached.inadimplentes;
-    const renovacoes30d = msData?.renovacoes30d ?? md.renovacoes30d ?? md.renovacoesMes ?? cached.renovacoes30d;
-    const leadsAtivos   = leadsData?.totalElements ?? leadsData?.total ?? msData?.leadsAtivos ?? cached.leadsAtivos;
-    const receita       = msData?.receitaMes ?? fd.receitaMes ?? fd.totalReceita ?? fd.receita ?? cached.receita;
-    const aReceber      = msData?.aReceber ?? fd.aReceber ?? fd.totalAReceber ?? cached.aReceber;
-    const matriculadosMesFromMS = msData?.matriculadosMes;
-
-    const novasVendas   = det.matriculadosMes + det.rematriculadosMes || cached.novasVendas || 0;
-    const cancelamentos = det.canceladosMes + det.desistenciaMes || cached.cancelamentos || 0;
-
-    const stats = {
-      // Sempre disponíveis via API key
-      ativos,
-      checkinsHoje,
-
-      // Do sintetico (ou cache anterior se sessão indisponível)
-      ...(agregadores !== undefined && { agregadores }),
-      ...(vencidos     !== undefined && { vencidos }),
-      ...(inadimplentes !== undefined && { inadimplentes }),
-      ...(renovacoes30d !== undefined && { renovacoes30d }),
-      ...(leadsAtivos   !== undefined && { leadsAtivos }),
-      ...(receita       !== undefined && { receita }),
-      ...(aReceber      !== undefined && { aReceber }),
-
-      novasVendas,
-      cancelamentos,
-      totalAlunos: ativos + (agregadores || 0) + (vencidos || 0),
-      saldoMes: novasVendas - cancelamentos,
-
-      funil: {
-        lead:     Math.floor((leadsAtivos || 0) * 0.4),
-        contato:  Math.floor((leadsAtivos || 0) * 0.3),
-        visita:   Math.floor((leadsAtivos || 0) * 0.2),
-        proposta: Math.floor((leadsAtivos || 0) * 0.1),
-        fechado:  novasVendas,
-      },
-      leadsSemContato: Math.floor((leadsAtivos || 0) * 0.15),
-
-      _syncedAt: new Date().toISOString(),
-      _autoSync: true,
-    };
-
-    // ── 4. Salvar no cache ────────────────────────────────────────────────────
-    cache.set('stats', stats);
-    cache.set('_raw', {
-      movimentacao: { table: det, ...md },
-      financeiro: fd,
-      leads: leadsData,
-    });
-
-    if (checkinsLista.length > 0) {
-      cache.set('checkins', { items: checkinsLista });
-    }
-
-    // ── 5. Cache de inadimplentes ─────────────────────────────────────────────
-    if (inadimplentesData?.length > 0) {
-      cache.set('inadimplentes_lista', { items: inadimplentesData, total: inadimplentesData.length });
-      console.log(`[AUTO-SYNC] Inadimplentes cacheados: ${inadimplentesData.length}`);
-    }
-
-    if (ativosData?.items?.length > 0) {
-      const alunosNormalizados = ativosData.items.map(c => ({
-        nome:             c.nome,
-        matricula:        String(c.matricula || ''),
-        codigoCliente:    c.cliente,
-        situacao:         typeof c.situacao === 'string' ? c.situacao.toUpperCase() : 'ATIVO',
-        situacaoContrato: typeof c.situacaoContrato === 'string' ? c.situacaoContrato.toUpperCase() : 'NORMAL',
-        categoria:        c.categoria || null,
-        fimContrato:      c.fimContrato || null,
-        telefone:         Array.isArray(c.telefones) ? (c.telefones[0]?.numero || '') : (c.telefone || ''),
-        email:            Array.isArray(c.emails) ? (c.emails[0] || '') : (c.email || ''),
-        ultimoAcesso:     c.ultimoAcesso || null,
-        datamatricula:    c.datamatricula || null,
-      }));
-      cache.set('alunos', { items: alunosNormalizados, total: alunosNormalizados.length });
-
-      // Derivar lista de inadimplentes a partir dos ativos: situacaoContrato INADIMPLENTE ou CANCELADO
-      const inadDerived = alunosNormalizados.filter(a =>
-        a.situacaoContrato === 'INADIMPLENTE' || a.situacao === 'INADIMPLENTE' ||
-        a.situacaoContrato === 'CANCELADO'    || a.situacao === 'CANCELADO'
-      );
-      if (inadDerived.length > 0 && !inadimplentesData?.length) {
-        cache.set('inadimplentes_lista', { items: inadDerived, total: inadDerived.length });
-        console.log(`[AUTO-SYNC] Inadimplentes derivados dos ativos: ${inadDerived.length}`);
-      }
-    }
-
-    _lastSyncAt = new Date();
-    const temSintetico = !!(movData || finData);
-    console.log(`[AUTO-SYNC] Concluído em ${new Date().toLocaleTimeString('pt-BR')}. Ativos=${ativos} | Checkins=${checkinsHoje} | Sintetico=${temSintetico ? 'OK' : 'SEM SESSÃO'}`);
-
-  } catch (err) {
-    console.error('[AUTO-SYNC] Erro geral:', err.message);
+    pactoHeadless = require('../integrations/pactoHeadless');
+  } catch (e) {
+    console.warn('[AUTO-SYNC] Puppeteer indisponível localmente.');
   }
 }
 
 /**
- * Inicia o motor de auto-sync
- * - Sync imediato na inicialização
- * - Sync a cada 30 minutos
+ * Motor Principal de Sincronização
+ * Prioriza Microserviços (MS) para funcionar no Vercel.
  */
-function start() {
-  // Sync inicial imediato (sem delay — o servidor já está up quando start() é chamado)
-  runSync();
+async function runSync() {
+  const tStart = Date.now();
+  console.log('🔄 [AUTO-SYNC] Iniciando sincronização consolidade...');
 
-  // Sync periódico a cada 30 minutos
-  const INTERVAL = 30 * 60 * 1000;
-  setInterval(runSync, INTERVAL);
+  try {
+    // ── 1. Dados Cruciais via API (Sempre disponíveis via API Key)
+    let ativosData = null;
+    try {
+      ativosData = await pacto.getContratosAtivos();
+      console.log(`[AUTO-SYNC] Ativos: ${ativosData?.total || 0}`);
+    } catch (e) {
+      console.error('[AUTO-SYNC] Erro ao buscar ativos:', e.message);
+    }
 
-  console.log('[AUTO-SYNC] Motor iniciado — sync a cada 30 minutos');
+    // ── 2. Variáveis de Coleta
+    let msData = null;
+    let movData = null;
+    let finData = null;
+    let leadsData = null;
+    
+    // Tenta Microserviços (Ideal para Vercel)
+    try {
+      msData = await pacto.getSintetico();
+      console.log('[AUTO-SYNC] Dados via Microserviços OK');
+    } catch (e) {
+      console.warn('[AUTO-SYNC] Erro ao buscar MS:', e.message);
+    }
+
+    const hasCredentials = !!(process.env.PACTO_USER && process.env.PACTO_PASS);
+
+    // Se estivermos LOCAL, ainda tentamos o Headless/Session para dados que o MS não tem
+    if (!isVercel && hasCredentials) {
+      if (pactoHeadless) {
+        try {
+          await pactoHeadless.ensureJwt();
+          const [movRes, finRes] = await Promise.allSettled([
+            pactoHeadless.getMovimentacao(),
+            pactoHeadless.getFinanceiro(),
+          ]);
+          movData = movRes.status === 'fulfilled' ? movRes.value : null;
+          finData = finRes.status === 'fulfilled' ? finRes.value : null;
+        } catch (_) {}
+      }
+    }
+
+    // ── 3. Consolidação Final
+    const cached = cache.get('stats') || {};
+    const md = movData || {};
+    const fd = finData || {};
+
+    // DEFINIÇÃO DAS VARIÁVEIS ANTES DO USO NO OBJETO 'det'
+    const matriculadosMesFromMS   = msData?.matriculadosMes;
+    const canceladosMesFromMS      = msData?.cancelamentosMes;
+    const rematriculadosMesFromMS = msData?.rematriculadosMes;
+
+    const det = {
+      matriculadosHoje:   md.matriculadosHoje   ?? 0,
+      matriculadosMes:    matriculadosMesFromMS ?? md.matriculadosMes ?? 0,
+      rematriculadosHoje: md.rematriculadosHoje ?? 0,
+      rematriculadosMes:  rematriculadosMesFromMS  ?? md.rematriculadosMes ?? 0,
+      canceladosHoje:     md.canceladosHoje     ?? 0,
+      canceladosMes:      canceladosMesFromMS      ?? md.canceladosMes    ?? 0,
+      desistenciaHoje:    md.desistenciaHoje    ?? 0,
+      desistenciaMes:     md.desistenciaMes     ?? 0,
+    };
+
+    const ativos        = ativosData?.total     || msData?.ativos || cached.ativos || 0;
+    const checkinsHoje  = ativosData?.checkinsHoje || msData?.checkinsHoje || 0;
+    const inadimplentes = msData?.inadimplentes || md.inadimplentes || cached.inadimplentes || 0;
+    const receita       = msData?.receitaMes    || fd.receitaMes    || cached.receita || 0;
+    const aReceber      = msData?.aReceber      || fd.aReceber      || cached.aReceber || 0;
+
+    const stats = {
+      ativos,
+      checkinsHoje,
+      inadimplentes,
+      receita,
+      aReceber,
+      novasVendas:   det.matriculadosMes + det.rematriculadosMes,
+      cancelamentos: det.canceladosMes + det.desistenciaMes,
+      totalAlunos:   ativos, // simplificando
+      
+      // Funil
+      funil: {
+        lead:     Math.floor((msData?.leadsAtivos || 0) * 0.4),
+        contato:  Math.floor((msData?.leadsAtivos || 0) * 0.3),
+        visita:   Math.floor((msData?.leadsAtivos || 0) * 0.2),
+        proposta: Math.floor((msData?.leadsAtivos || 0) * 0.1),
+        fechado:  det.matriculadosMes + det.rematriculadosMes,
+      },
+      
+      _syncedAt: new Date().toISOString(),
+      _isAuto:   true,
+    };
+
+    // ── 4. Salvar Cache
+    cache.set('stats', stats);
+    if (ativosData?.checkinsLista) {
+      cache.set('checkins', { items: ativosData.checkinsLista.slice(0, 20) });
+    }
+
+    console.log(`✅ [AUTO-SYNC] Finalizado em ${Date.now() - tStart}ms`);
+    return stats;
+
+  } catch (err) {
+    console.error('❌ [AUTO-SYNC] Erro Fatal:', err.message);
+    throw err;
+  }
 }
 
-function getStatus() {
-  return {
-    lastSyncAt: _lastSyncAt?.toISOString() || null,
-    running: _syncRunning,
-    headless: pactoHeadless?.getStatus() || null,
-    session: pactoSession?.getSessionStatus() || null,
-  };
-}
-
-module.exports = { start, runSync, getStatus };
+module.exports = {
+  runSync,
+  start: () => {
+    if (isVercel) {
+      console.log('[AUTO-SYNC] Mode: Vercel/Serverless (Sincronização reativa)');
+      runSync().catch(() => {});
+    } else {
+      setInterval(runSync, 20 * 60 * 1000);
+      runSync().catch(() => {});
+    }
+  }
+};

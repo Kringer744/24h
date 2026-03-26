@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "installCommand": "npm install --omit=optional",
   "functions": {
     "server.js": {
       "maxDuration": 60
@@ -14,8 +13,16 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/api/cron/sync",
       "dest": "server.js"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "public/$1"
     }
   ],
   "crons": [
