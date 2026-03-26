@@ -41,23 +41,8 @@ async function requestWithRetry(instance, method, url, options = {}, retries = 2
  * Busca total de contratos com uma situação específica e período
  */
 async function getContratosCount(situacao, dataDe, dataAte) {
-  try {
-    const res = await requestWithRetry(gateway, 'get', '/adm-core-ms/v1/contratos', {
-      params: { 
-        empresa: EMPRESA_ID, 
-        unidade: UNIDADE_ID, 
-        situacao, 
-        dataDe, 
-        dataAte, 
-        size: 1 
-      },
-      headers: { 'Authorization': `Bearer ${config.pacto.apiKey}` }
-    });
-    return res.data?.totalElements || 0;
-  } catch (err) {
-    console.error(`[PACTO] Erro ao buscar count ${situacao}:`, err.message);
-    return 0;
-  }
+  // Endpoint /adm-core-ms não existe — retorna 0 (dados virão via sintetico JWT relay)
+  return 0;
 }
 
 /**
@@ -65,28 +50,37 @@ async function getContratosCount(situacao, dataDe, dataAte) {
  */
 async function getContratosAtivos() {
   try {
-    const res = await requestWithRetry(gateway, 'get', '/adm-core-ms/v1/contratos', {
-      params: { 
-        empresa: EMPRESA_ID, 
-        unidade: UNIDADE_ID, 
-        situacao: 'ATIVO', 
-        size: 1 
-      },
-      headers: { 'Authorization': `Bearer ${config.pacto.apiKey}` }
+    const res = await requestWithRetry(gateway, 'get', '/psec/clientes/ativos', {
+      headers: {
+        'Authorization': `Bearer ${config.pacto.apiKey}`,
+        'empresaId': String(EMPRESA_ID),
+        'unidadeId': String(UNIDADE_ID),
+      }
     });
 
-    // Extras: tenta pegar checkins de hoje
-    const hoje = new Date().toISOString().split('T')[0];
-    const checkins = await requestWithRetry(gateway, 'get', '/adm-core-ms/v1/acessos', {
-      params: { empresa: EMPRESA_ID, unidade: UNIDADE_ID, data: hoje },
-      headers: { 'Authorization': `Bearer ${config.pacto.apiKey}` }
-    }).catch(() => ({ data: { content: [] } }));
+    const clientes = res.data?.content?.clientes || res.data?.clientes || (Array.isArray(res.data) ? res.data : []);
+
+    // Checkins de hoje: clientes cujo ultimoAcesso é hoje
+    const hoje = new Date().toISOString().split('T')[0]; // "2026-03-26"
+    const checkinsLista = clientes.filter(c => c.ultimoAcesso && c.ultimoAcesso.startsWith(hoje.split('-').reverse().join('/')));
+
+    // Matriculados este mês
+    const mesAtual = new Date().toISOString().slice(0, 7); // "2026-03"
+    const [ano, mes] = mesAtual.split('-');
+    const matriculadosMes = clientes.filter(c => {
+      if (!c.datamatricula) return false;
+      const [d, m, a] = c.datamatricula.split('/');
+      return a === ano && m === mes;
+    }).length;
+
+    console.log(`[PACTO] Ativos via /psec/clientes/ativos: ${clientes.length}`);
 
     return {
-      total: res.data?.totalElements || 0,
-      checkinsHoje: checkins.data?.content?.length || 0,
-      checkinsLista: checkins.data?.content || [],
-      matriculadosMes: 0, // será preenchido pelo getSintetico
+      total:          clientes.length,
+      items:          clientes,
+      checkinsHoje:   checkinsLista.length,
+      checkinsLista,
+      matriculadosMes,
     };
   } catch (err) {
     console.error('[PACTO] Erro ao buscar contratos ativos:', err.message);
@@ -118,15 +112,8 @@ async function getFinanceiroMS() {
  * Busca inadimplentes via Microserviço
  */
 async function getInadimplentesMS() {
-  try {
-    const res = await requestWithRetry(gateway, 'get', `/adm-core-ms/v1/contratos`, {
-      params: { empresa: EMPRESA_ID, unidade: UNIDADE_ID, situacao: 'INADIMPLENTE', size: 50 },
-      headers: { 'Authorization': `Bearer ${config.pacto.apiKey}` }
-    });
-    return res.data?.content || [];
-  } catch (err) {
-    return [];
-  }
+  // Endpoint /adm-core-ms não existe — dados virão via sintetico JWT relay
+  return [];
 }
 
 /**
