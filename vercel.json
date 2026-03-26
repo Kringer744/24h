@@ -1,23 +1,15 @@
 {
   "version": 2,
-  "functions": {
-    "server.js": {
-      "maxDuration": 60
+  "installCommand": "npm install --omit=optional",
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node",
+      "config": { "maxDuration": 60 }
     }
-  },
+  ],
   "routes": [
-    {
-      "src": "/api/cron/sync",
-      "dest": "server.js"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "public/$1"
-    }
+    { "src": "/(.*)", "dest": "server.js" }
   ],
   "crons": [
     {
