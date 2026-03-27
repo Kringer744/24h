@@ -961,7 +961,6 @@
       </div>
       <div class="header-right">
         <div id="lastUpdate" style="font-size: 11px; color: var(--color-text-muted)"></div>
-        <button onclick="mostrarSyncFinanceiro()" title="Sincronizar Receita, Inadimplentes e Movimentação" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);font-weight:600;padding:8px 14px;border-radius:10px;cursor:pointer;font-size:12px;">💰 Sync Financeiro</button>
         <button class="btn-refresh" id="btnForceSyncPacto" onclick="forceSyncPacto(this)" style="background: var(--color-accent, #2563EB); color: white; border: none; font-weight: 600; padding: 8px 20px; border-radius: 10px; cursor: pointer; font-size: 13px; box-shadow: 0 0 16px rgba(37,99,235,0.35); transition: all 0.2s">↻ Atualizar</button>
       </div>
     </header>
@@ -1065,45 +1064,6 @@
         </div>
       </div>
 
-      <!-- Movimentações -->
-      <div class="section">
-        <div class="section-header">
-          <span class="section-title"><i data-lucide="bar-chart-2" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"></i>Movimentações do Mês</span>
-          <button class="btn btn-secondary" id="btnBookmarklet" onclick="mostrarBookmarklet()" style="font-size:11px;padding:4px 10px;display:none">
-            <i data-lucide="link" style="width:11px;height:11px;vertical-align:-1px;margin-right:3px"></i>Bookmarklet
-          </button>
-        </div>
-        <div id="movSinteticoNotice" style="display:none;padding:10px 16px;background:rgba(245,158,11,0.08);border-bottom:1px solid rgba(245,158,11,0.2);font-size:12px;color:#F59E0B">
-          <i data-lucide="alert-triangle" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px"></i>
-          Dados parciais — cancelamentos, rematrículas e desistências requerem login no PACTO.
-          <a href="#" onclick="mostrarBookmarklet();return false" style="color:#60A5FA;margin-left:6px">Usar Bookmarklet</a>
-        </div>
-        <div class="section-body" style="padding:0">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Indicador</th>
-                  <th style="text-align:right">Hoje</th>
-                  <th style="text-align:right">Mês</th>
-                </tr>
-              </thead>
-              <tbody id="movimentacaoBody">
-                <tr><td>Matriculados</td><td style="text-align:right" id="movMatHoje">—</td><td style="text-align:right" id="movMatMes">—</td></tr>
-                <tr><td>Rematriculados</td><td style="text-align:right" id="movRematHoje">—</td><td style="text-align:right" id="movRematMes">—</td></tr>
-                <tr><td style="color:var(--color-orange)">Cancelados</td><td style="text-align:right;color:var(--color-orange)" id="movCanHoje">—</td><td style="text-align:right;color:var(--color-orange)" id="movCanMes">—</td></tr>
-                <tr><td style="color:var(--color-orange)">Desistência</td><td style="text-align:right;color:var(--color-orange)" id="movDesHoje">—</td><td style="text-align:right;color:var(--color-orange)" id="movDesMes">—</td></tr>
-                <tr><td>Trancados</td><td style="text-align:right" id="movTraHoje">—</td><td style="text-align:right" id="movTraMes">—</td></tr>
-                <tr style="background:var(--color-hover);font-weight:700">
-                  <td>Saldo Net</td>
-                  <td style="text-align:right" id="movSaldoHoje">—</td>
-                  <td style="text-align:right" id="movSaldoMes">—</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- ── Check-ins ──────────────────────────────────────────────────── -->
@@ -1148,7 +1108,6 @@
         <button class="btn btn-secondary" style="font-size:12px" onclick="loadOportunidades()">↻ Atualizar</button>
         <button class="btn btn-primary" onclick="abrirModalNovaOp()">+ Nova Oportunidade</button>
         <button class="btn btn-secondary" id="btnImportarInativos" onclick="importarInativos()" title="Importa clientes inativos do PACTO como leads para reativação" style="font-size:12px"><i data-lucide="download" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Importar Inativos</button>
-        <button class="btn btn-secondary" onclick="importarInadimplentesParaFunil()" title="Importa inadimplentes do cache como leads de cobrança" style="font-size:12px;color:var(--color-orange);border-color:rgba(249,115,22,0.3)"><i data-lucide="alert-triangle" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Importar Inadimplentes</button>
       </div>
     </div>
     <div class="kanban" id="kanbanBoard">
@@ -1163,7 +1122,6 @@
     <!-- Sub-tabs -->
     <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--color-surface);padding:4px;border-radius:var(--radius-md);width:fit-content;border:1px solid var(--color-border)">
       <button id="subtabAtivos" onclick="switchSubtabAlunos('ativos')" style="padding:6px 18px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:var(--color-accent);color:white;transition:all 0.15s">Ativos</button>
-      <button id="subtabInadimplentes" onclick="switchSubtabAlunos('inadimplentes')" style="padding:6px 18px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:transparent;color:var(--color-text-secondary);transition:all 0.15s">Inadimplentes</button>
     </div>
 
     <!-- Ativos section -->
@@ -1198,41 +1156,7 @@
     </div>
   </div> <!-- end secaoAtivos -->
 
-  <!-- Inadimplentes section -->
-  <div id="secaoInadimplentes" style="display:none">
-  <div class="section">
-    <div class="section-header">
-      <span class="section-title" style="color:var(--color-orange)"><i data-lucide="alert-triangle" style="width:15px;height:15px;vertical-align:middle"></i> Alunos Inadimplentes</span>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" class="form-control" style="width:200px" placeholder="Buscar por nome..." id="searchInad" oninput="filtrarInadimplentes()" />
-        <button class="btn btn-secondary" onclick="importarInadimplentesParaFunil()" style="font-size:12px;white-space:nowrap" title="Cria leads no Funil CRM para cada inadimplente e inicia cadência de cobrança">
-          <i data-lucide="git-merge" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px"></i>Importar para Funil
-        </button>
-        <button class="btn btn-primary" onclick="dispararParaInadimplentes()" style="font-size:12px;white-space:nowrap">
-          <i data-lucide="send" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px"></i>Disparar para Todos
-        </button>
-      </div>
-    </div>
-    <div class="section-body" style="padding:0">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Matrícula</th>
-              <th>Nome</th>
-              <th>Situação</th>
-              <th>Telefone</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="inadimplentesBody">
-            <tr><td colspan="5"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-  </div> <!-- end secaoInadimplentes -->
+
 
   </div>
 
@@ -1870,7 +1794,7 @@ function switchTab(id) {
   const el = document.getElementById('viewTitle');
   if (el) el.textContent = titles[id] || id;
 
-  if (id === 'alunos') { loadAlunos(); switchSubtabAlunos('ativos'); }
+  if (id === 'alunos') { loadAlunos(); }
   if (id === 'cadencias') { renderCadencias(); loadMassaPreviews(); }
   if (id === 'funil') loadOportunidades();
   if (id === 'whatsapp') calcularBroadcast();
@@ -1967,20 +1891,6 @@ async function refreshDashboard() {
         showSyncBanner(`Cache de ${when}`, 'yellow');
       } else {
         hideSyncBanner();
-      }
-
-      // ── Tabela de movimentações (raw sync) ───────────────
-      const m = d._raw?.movimentacao?.table || d._raw?.movimentacao || {};
-      setTxt('movMatHoje',   m.matriculadosHoje);    setTxt('movMatMes',   m.matriculadosMes);
-      setTxt('movRematHoje', m.rematriculadosHoje);  setTxt('movRematMes', m.rematriculadosMes);
-      setTxt('movCanHoje',   m.canceladosHoje);       setTxt('movCanMes',   m.canceladosMes);
-      setTxt('movDesHoje',   m.desistenciaHoje);      setTxt('movDesMes',   m.desistenciaMes);
-      setTxt('movTraHoje',   m.trancadosHoje);        setTxt('movTraMes',   m.trancadosMes);
-
-      const sH = (m.matriculadosHoje||0)+(m.rematriculadosHoje||0)-(m.canceladosHoje||0)-(m.desistenciaHoje||0);
-      const sM = (m.matriculadosMes||0)+(m.rematriculadosMes||0)-(m.canceladosMes||0)-(m.desistenciaMes||0);
-      setTxt('movSaldoHoje', (sH > 0 ? '+' : '') + sH);
-      setTxt('movSaldoMes',  (sM > 0 ? '+' : '') + sM);
     } else {
       renderMockData();
       showSyncBanner('PACTO indisponível — execute o sync no browser PACTO', 'yellow');

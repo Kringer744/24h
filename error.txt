@@ -1,0 +1,24 @@
+[CADENCIA] Fila carregada: 16 agendamentos
+🔄 [AUTO-SYNC] Iniciando sincronização consolidade...
+
+🏋️  24H NORTE — Sistema Comercial
+📊  Dashboard:  http://localhost:3001
+🔌  API:        http://localhost:3001/api
+
+📡  PACTO:  https://apigw.pactosolucoes.com.br
+💬  UAZAPI: https://fluxodigitaltech.uazapi.com
+
+[CADENCIA] Iniciando motor de cadências (executa a cada minuto)...
+[PACTO] Erro ao buscar contratos ativos: Request failed with status code 404
+[AUTO-SYNC] Erro ao buscar ativos: Request failed with status code 404
+[PACTO] Erro ao buscar contratos ativos: Request failed with status code 404
+[AUTO-SYNC] Erro ao buscar MS: Request failed with status code 404
+[HEADLESS] Iniciando login automático via Chrome...
+[PACTO] Erro ao buscar count ATIVO: Request failed with status code 404
+[PACTO] Erro ao buscar count CANCELADO: Request failed with status code 404
+[PACTO] Erro ao buscar count REMATRICULADO: Request failed with status code 404
+[HEADLESS] Abrindo página de login PACTO...
+[HEADLESS] Credenciais preenchidas. Clicando em reCAPTCHA...
+[HEADLESS] reCAPTCHA clicado. Aguardando validação (até 20s)...
+[HEADLESS] Botão Entrar clicado. Aguardando JWT...
+✅ [AUTO-SYNC] Finalizado em 82006ms

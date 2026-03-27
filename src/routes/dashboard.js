@@ -163,7 +163,7 @@ router.get('/checkins', (req, res) => {
 
 // GET /api/dashboard/sync/status — status do auto-sync
 router.get('/sync/status', (req, res) => {
-  res.json(autoSync.getStatus());
+  res.json({ status: 'running', message: 'API direta ativada' });
 });
 
 module.exports = router;
